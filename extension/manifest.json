@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "TextReader",
+  "description": "Listen to selected text, extracted articles, and readable pages with customizable system voices.",
+  "version": "0.2.1",
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "activeTab", "contextMenus", "sidePanel"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/content/content-script.ts"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "TextReader",
+    "default_popup": "src/popup/index.html",
+    "default_icon": {
+      "16": "public/icons/icon-16.png",
+      "32": "public/icons/icon-32.png",
+      "48": "public/icons/icon-48.png",
+      "128": "public/icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "public/icons/icon-16.png",
+    "32": "public/icons/icon-32.png",
+    "48": "public/icons/icon-48.png",
+    "128": "public/icons/icon-128.png"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "options_page": "src/options/index.html",
+  "commands": {
+    "open-or-read": {
+      "suggested_key": {
+        "default": "Alt+R"
+      },
+      "description": "Open TextReader or read the current selection"
+    },
+    "stop-reading": {
+      "suggested_key": {
+        "default": "Alt+Shift+R"
+      },
+      "description": "Stop reading"
+    }
+  }
+}
