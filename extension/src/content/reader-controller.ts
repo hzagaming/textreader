@@ -73,6 +73,7 @@ export class ContentReaderController {
       readingProgressService.get(window.location.href).catch(() => undefined),
     ])
     this.state = { ...this.state, settings }
+    this.floatingButton.setLanguage(settings.uiLanguage)
     this.storedProgress = progress
     if (progress && progress.progress > 0.01 && progress.progress < 0.98) {
       this.state = {
@@ -243,13 +244,16 @@ export class ContentReaderController {
     this.broadcastState()
 
     try {
-      const { voiceId, speed, pitch, volume } = this.state.settings
+      const { voiceId, voiceByLanguage, readingLanguage, speed, pitch, volume } =
+        this.state.settings
       await this.tts.speak({
         text: readerDocument.plainText,
         sentences: this.queue.getSentences().map((sentence) => sentence.text),
         rate: speed,
         pitch,
         volume,
+        readingLanguage,
+        voiceByLanguage,
         startSentenceIndex: firstSentence.index,
         ...(readerDocument.language ? { language: readerDocument.language } : {}),
         ...(voiceId ? { voiceId } : {}),
@@ -289,8 +293,11 @@ export class ContentReaderController {
 
   private applySettings(settings: ReaderSettings): void {
     this.state = { ...this.state, settings }
+    this.floatingButton.setLanguage(settings.uiLanguage)
     this.tts.updateRequest({
       voiceId: settings.voiceId,
+      voiceByLanguage: settings.voiceByLanguage,
+      readingLanguage: settings.readingLanguage,
       rate: settings.speed,
       pitch: settings.pitch,
       volume: settings.volume,

@@ -11,6 +11,10 @@ const MENU_READ_SELECTION = 'textreader-read-selection'
 const MENU_OPEN = 'textreader-open'
 const readerPorts = new Set<chrome.runtime.Port>()
 
+function message(key: string, fallback: string): string {
+  return chrome.i18n.getMessage(key) || fallback
+}
+
 function relayReaderUpdate(tabId: number, message: ReaderUpdateMessage): void {
   for (const port of readerPorts) {
     try {
@@ -43,19 +47,19 @@ chrome.runtime.onInstalled.addListener(() => {
     .then(() => {
       chrome.contextMenus.create({
         id: MENU_ROOT,
-        title: 'Read with TextReader',
+        title: message('contextMenuRoot', 'Read with TextReader'),
         contexts: ['all'],
       })
       chrome.contextMenus.create({
         id: MENU_READ_SELECTION,
         parentId: MENU_ROOT,
-        title: 'Read selected text',
+        title: message('contextMenuSelection', 'Read selected text'),
         contexts: ['selection'],
       })
       chrome.contextMenus.create({
         id: MENU_OPEN,
         parentId: MENU_ROOT,
-        title: 'Open TextReader',
+        title: message('contextMenuOpen', 'Open TextReader'),
         contexts: ['all'],
       })
     })

@@ -53,6 +53,57 @@ describe('normalizeSettings', () => {
     })
   })
 
+  it('migrates Phase 2 settings to multilingual voice defaults', () => {
+    expect(
+      normalizeSettings({ schemaVersion: 2, voiceId: 'Samantha', theme: 'light' }),
+    ).toMatchObject({
+      schemaVersion: 3,
+      uiLanguage: 'auto',
+      readingLanguage: 'auto',
+      voiceId: 'Samantha',
+      voiceByLanguage: { en: '', zh: '', ja: '', ko: '' },
+      favoriteVoiceIds: [],
+      recentVoiceIds: [],
+      voicePresets: [],
+    })
+  })
+
+  it('drops malformed voice metadata and caps user collections', () => {
+    const normalized = normalizeSettings({
+      schemaVersion: 3,
+      favoriteVoiceIds: ['a', 'a', 2, ...Array.from({ length: 30 }, (_, i) => `f${i}`)],
+      recentVoiceIds: Array.from({ length: 30 }, (_, i) => `r${i}`),
+      voicePresets: [
+        {
+          id: 'calm',
+          name: 'Calm',
+          voiceId: 'voice-en',
+          readingLanguage: 'en',
+          speed: 9,
+          pitch: -80,
+          volume: 3,
+          createdAt: 10,
+        },
+        { id: '', name: '', voiceId: '' },
+      ],
+    })
+
+    expect(normalized.favoriteVoiceIds).toHaveLength(20)
+    expect(normalized.recentVoiceIds).toHaveLength(20)
+    expect(normalized.voicePresets).toEqual([
+      {
+        id: 'calm',
+        name: 'Calm',
+        voiceId: 'voice-en',
+        readingLanguage: 'en',
+        speed: 2.5,
+        pitch: -50,
+        volume: 1,
+        createdAt: 10,
+      },
+    ])
+  })
+
   it('serializes rapid updates so a slower write cannot discard a newer field', async () => {
     const stored: Record<string, unknown> = {
       [SETTINGS_STORAGE_KEY]: { ...DEFAULT_SETTINGS },

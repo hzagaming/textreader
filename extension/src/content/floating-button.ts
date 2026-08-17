@@ -1,4 +1,5 @@
-import type { TextSelection } from '@textreader/shared'
+import type { TextSelection, UiLanguage } from '@textreader/shared'
+import { createTranslator, resolveUiLanguage } from '@/services/i18n/i18n'
 
 const BUTTON_SIZE = 38
 const LARGE_HEIGHT = 46
@@ -13,7 +14,9 @@ export class SelectionFloatingButton {
   private readonly articleButton: HTMLButtonElement
   private readonly choices: HTMLDivElement
   private readonly singleWrap: HTMLDivElement
+  private readonly tip: HTMLSpanElement
   private selection: TextSelection | null = null
+  private t = createTranslator('auto')
 
   constructor(
     private readonly onRead: (selection: TextSelection) => void,
@@ -55,21 +58,21 @@ export class SelectionFloatingButton {
 
     this.singleWrap = document.createElement('div')
     this.singleWrap.className = 'single-wrap'
-    this.singleButton = this.createButton('Read with TextReader', 'single')
+    this.singleButton = this.createButton(this.t('readWithTextReader'), 'single')
     this.singleButton.innerHTML = `
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M5 9v6h4l5 4V5L9 9H5Z" fill="currentColor"/>
         <path d="M17 8.2a5 5 0 0 1 0 7.6M19.5 5.8a8.2 8.2 0 0 1 0 12.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
       </svg>`
-    const tip = document.createElement('span')
-    tip.className = 'tip'
-    tip.textContent = 'Read with TextReader'
-    this.singleWrap.append(this.singleButton, tip)
+    this.tip = document.createElement('span')
+    this.tip.className = 'tip'
+    this.tip.textContent = this.t('readWithTextReader')
+    this.singleWrap.append(this.singleButton, this.tip)
 
     this.choices = document.createElement('div')
     this.choices.className = 'choices'
-    this.selectionButton = this.createButton('Read selection')
-    this.articleButton = this.createButton('Read article')
+    this.selectionButton = this.createButton(this.t('readSelection'))
+    this.articleButton = this.createButton(this.t('readArticle'))
     this.choices.append(this.selectionButton, this.articleButton)
 
     this.singleButton.addEventListener('click', this.handleSelectionClick)
@@ -104,6 +107,18 @@ export class SelectionFloatingButton {
       zIndex: '2147483647',
     })
     this.host.hidden = false
+  }
+
+  setLanguage(language: UiLanguage): void {
+    this.t = createTranslator(language)
+    this.host.lang = resolveUiLanguage(language)
+    const readWithTextReader = this.t('readWithTextReader')
+    this.singleButton.ariaLabel = readWithTextReader
+    this.tip.textContent = readWithTextReader
+    this.selectionButton.textContent = this.t('readSelection')
+    this.selectionButton.ariaLabel = this.t('readSelection')
+    this.articleButton.textContent = this.t('readArticle')
+    this.articleButton.ariaLabel = this.t('readArticle')
   }
 
   hide(): void {

@@ -1,0 +1,12 @@
+{
+  "extensionName": { "message": "TextReader" },
+  "extensionDescription": {
+    "message": "사용자 지정 가능한 다국어 시스템 음성으로 선택 영역, 문서 및 페이지를 읽습니다."
+  },
+  "actionTitle": { "message": "TextReader 열기" },
+  "commandOpen": { "message": "TextReader를 열거나 현재 선택 영역 읽기" },
+  "commandStop": { "message": "읽기 중지" },
+  "contextMenuRoot": { "message": "TextReader로 읽기" },
+  "contextMenuSelection": { "message": "선택한 텍스트 읽기" },
+  "contextMenuOpen": { "message": "TextReader 열기" }
+}

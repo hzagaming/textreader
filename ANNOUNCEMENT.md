@@ -1,25 +1,25 @@
-# TextReader 0.2.2
+# TextReader 0.3.0
 
 Released on August 17, 2026.
 
-TextReader 0.2.2 is a Phase 2 stability, responsiveness, and reading-continuity release for Chrome and Microsoft Edge.
+TextReader 0.3.0 is a stable multilingual voice-library release for Chrome and Microsoft Edge, built on the completed Phase 2 local reader.
 
 ## Highlights
 
-- Re-synchronized the Side Panel after service-worker or Port reconnection so playback state cannot remain stale.
-- Prevented older article/page/selection requests and TTS callbacks from overwriting the newest reading action.
-- Made loading cancellable and disabled conflicting controls, navigation, and shortcuts until playback is ready.
-- Fixed hidden, zero-size, ignored-field, click, and viewport-edge states for the selection menu, plus nested-list duplicate speech.
-- Hardened tab queries and malformed runtime responses, and safely handled background-menu and progress-save failures.
-- Kept reader state and titles isolated to the correct browser window, exposed unavailable saved voices and asynchronous TTS errors, and protected rapid setting toggles.
-- Improved light-theme contrast and removed an unnecessary full-page text scan plus unused message paths.
+- Added Chinese, English, Japanese, and Korean interfaces across the Popup, Options, Side Panel, floating selection controls, context menus, commands, and extension metadata.
+- Added automatic per-sentence language detection and per-language system-voice mappings for multilingual articles.
+- Added a searchable language-filtered voice library with favorites, recent voices, unavailable-voice feedback, and on-device/network-use labels.
+- Added localized voice previews and custom presets for voice, language, speed, pitch, and volume.
+- Upgraded local settings to schema version 3 with bounded, validated migration for language and voice metadata.
+- Localized reader failures by error type, corrected Web Speech privacy disclosures, protected rapid writes, and prevented notices from blocking Side Panel controls.
+- Rechecked light/dark themes, focus visibility, reduced motion, narrow/short layouts, empty voice lists, preview cancellation, and localized overflow behavior.
 
-This release remains fully local: it uses the browser's Web Speech API and does not add remote TTS, SFX, BGM, tracking, or third-party secrets.
+TextReader does not operate or call a remote TTS backend in this release. Settings, favorites, recent voices, and presets remain in `chrome.storage.local`; a browser/OS voice marked as possibly network-backed may process spoken text through its own service. Voice cloning is not enabled without an authorized provider and consent workflow. No SFX, BGM, tracking, or third-party secrets were added.
 
 ## Verification
 
-- 21 automated test files with 66 passing tests
+- 25 automated test files with 82 passing tests
 - ESLint, TypeScript, production build, formatting, dependency audit, and sensitive-data checks
-- Real Chromium checks across Popup, Options, and narrow/short Side Panel sizes, including race handling, reduced motion, title changes, nested lists, service-worker reconnection, playback recovery, and browser-restricted pages
+- Real Chromium checks across all four UI languages, Popup, Options, and 280 px / 400 px Side Panel layouts, including voice search, selection, favorites, preview, presets, empty/unavailable voices, focus, reduced motion, dark theme, persistence, and console errors
 
-Previous announcement: [TextReader 0.2.1](./docs/announcements/history/0.2.1.md).
+Previous announcement: [TextReader 0.2.2](./docs/announcements/history/0.2.2.md).

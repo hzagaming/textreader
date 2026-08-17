@@ -1,0 +1,12 @@
+{
+  "extensionName": { "message": "TextReader" },
+  "extensionDescription": {
+    "message": "使用可自定义的多语言系统音色朗读选区、文章和网页。"
+  },
+  "actionTitle": { "message": "打开 TextReader" },
+  "commandOpen": { "message": "打开 TextReader 或朗读当前选区" },
+  "commandStop": { "message": "停止朗读" },
+  "contextMenuRoot": { "message": "使用 TextReader 朗读" },
+  "contextMenuSelection": { "message": "朗读选中的文字" },
+  "contextMenuOpen": { "message": "打开 TextReader" }
+}

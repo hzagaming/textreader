@@ -13,6 +13,7 @@
   --tr-soft: #eceff3;
   --tr-highlight: #e8edf4;
   --tr-focus: #2563eb;
+  --tr-danger: #b42318;
   font-family:
     Inter,
     ui-sans-serif,
@@ -36,6 +37,7 @@
   --tr-soft: #262a31;
   --tr-highlight: #292f39;
   --tr-focus: #60a5fa;
+  --tr-danger: #ff9b91;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -52,6 +54,7 @@
     --tr-soft: #262a31;
     --tr-highlight: #292f39;
     --tr-focus: #60a5fa;
+    --tr-danger: #ff9b91;
   }
 }
 

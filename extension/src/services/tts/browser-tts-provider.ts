@@ -1,6 +1,11 @@
 import type { TTSController, TTSRequest } from '@textreader/shared'
+import {
+  normalizeSupportedLanguage,
+  resolveReadingLanguage,
+} from '@/services/language/language'
 import { TextReaderError } from '@/types/errors'
 import { segmentText } from './segment-text'
+import { selectVoiceForLanguage } from './voice-catalog'
 
 export type PlaybackStatus = 'playing' | 'paused' | 'stopped' | 'finished' | 'error'
 
@@ -81,7 +86,10 @@ export class BrowserTTSProvider implements TTSController {
   }
 
   updateRequest(
-    settings: Pick<TTSRequest, 'voiceId' | 'rate' | 'pitch' | 'volume'>,
+    settings: Pick<
+      TTSRequest,
+      'voiceId' | 'voiceByLanguage' | 'readingLanguage' | 'rate' | 'pitch' | 'volume'
+    >,
   ): void {
     if (!this.request) return
     this.request = { ...this.request, ...settings }
@@ -102,17 +110,26 @@ export class BrowserTTSProvider implements TTSController {
     utterance.rate = request.rate
     utterance.pitch = 1 + request.pitch / 50
     utterance.volume = request.volume
-    if (request.language) utterance.lang = request.language
-
-    if (request.voiceId) {
-      const voice = this.synthesis
-        .getVoices()
-        .find(
-          (candidate) =>
-            candidate.voiceURI === request.voiceId || candidate.name === request.voiceId,
-        )
-      if (voice) utterance.voice = voice
-    }
+    const readingLanguage = request.readingLanguage ?? 'auto'
+    const language = resolveReadingLanguage(text, readingLanguage, request.language)
+    const voices = this.synthesis.getVoices()
+    const fixedVoice =
+      readingLanguage !== 'auto' && request.voiceId
+        ? voices.find(
+            (voice) =>
+              voice.voiceURI === request.voiceId || voice.name === request.voiceId,
+          )
+        : undefined
+    const voice =
+      fixedVoice ??
+      selectVoiceForLanguage(
+        voices,
+        request.voiceByLanguage?.[language] || request.voiceId,
+        language,
+      )
+    if (voice) utterance.voice = voice
+    utterance.lang =
+      voice && normalizeSupportedLanguage(voice.lang) === language ? voice.lang : language
 
     utterance.onstart = () => {
       if (generation === this.generation) this.emit('playing')

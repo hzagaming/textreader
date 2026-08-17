@@ -6,6 +6,23 @@ export type ThemePreference = 'system' | 'light' | 'dark'
 
 export type HighlightMode = 'off' | 'sentence' | 'paragraph'
 
+export type SupportedLanguage = 'en' | 'zh' | 'ja' | 'ko'
+
+export type UiLanguage = 'auto' | SupportedLanguage
+
+export type ReadingLanguage = 'auto' | SupportedLanguage
+
+export interface VoicePreset {
+  id: string
+  name: string
+  voiceId: string
+  readingLanguage: ReadingLanguage
+  speed: number
+  pitch: number
+  volume: number
+  createdAt: number
+}
+
 export interface TextSelection {
   text: string
   pageUrl: string
@@ -21,8 +38,14 @@ export interface TextSelection {
 }
 
 export interface ReaderSettings {
-  schemaVersion: 2
+  schemaVersion: 3
   voiceId: string
+  voiceByLanguage: Record<SupportedLanguage, string>
+  favoriteVoiceIds: string[]
+  recentVoiceIds: string[]
+  voicePresets: VoicePreset[]
+  uiLanguage: UiLanguage
+  readingLanguage: ReadingLanguage
   speed: number
   pitch: number
   volume: number
@@ -97,6 +120,8 @@ export interface TTSRequest {
   pitch: number
   volume: number
   language?: string
+  readingLanguage?: ReadingLanguage
+  voiceByLanguage?: Partial<Record<SupportedLanguage, string>>
   startSentenceIndex?: number
   sentences?: string[]
 }

@@ -1,0 +1,12 @@
+{
+  "extensionName": { "message": "TextReader" },
+  "extensionDescription": {
+    "message": "カスタマイズ可能な多言語システム音声で選択範囲、記事、ページを読み上げます。"
+  },
+  "actionTitle": { "message": "TextReader を開く" },
+  "commandOpen": { "message": "TextReader を開くか、現在の選択範囲を読み上げる" },
+  "commandStop": { "message": "読み上げを停止" },
+  "contextMenuRoot": { "message": "TextReader で読み上げる" },
+  "contextMenuSelection": { "message": "選択したテキストを読む" },
+  "contextMenuOpen": { "message": "TextReader を開く" }
+}

@@ -1,10 +1,26 @@
-import type { HighlightMode, ReaderSettings, ThemePreference } from '@textreader/shared'
+import type {
+  HighlightMode,
+  ReaderSettings,
+  ReadingLanguage,
+  SupportedLanguage,
+  ThemePreference,
+  UiLanguage,
+  VoicePreset,
+} from '@textreader/shared'
+
+const MAX_VOICE_ITEMS = 20
 
 export const SETTINGS_STORAGE_KEY = 'readerSettings'
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   voiceId: '',
+  voiceByLanguage: { en: '', zh: '', ja: '', ko: '' },
+  favoriteVoiceIds: [],
+  recentVoiceIds: [],
+  voicePresets: [],
+  uiLanguage: 'auto',
+  readingLanguage: 'auto',
   speed: 1,
   pitch: 0,
   volume: 1,
@@ -34,14 +50,92 @@ function normalizeHighlightMode(value: unknown): HighlightMode {
     : DEFAULT_SETTINGS.highlightMode
 }
 
+function normalizeLanguage<T extends UiLanguage | ReadingLanguage>(
+  value: unknown,
+  fallback: T,
+): T {
+  return value === 'auto' ||
+    value === 'en' ||
+    value === 'zh' ||
+    value === 'ja' ||
+    value === 'ko'
+    ? (value as T)
+    : fallback
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return Array.from(
+    new Set(
+      value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ).slice(0, MAX_VOICE_ITEMS)
+}
+
+function normalizeVoiceByLanguage(value: unknown): Record<SupportedLanguage, string> {
+  const record = isRecord(value) ? value : {}
+  const voice = (language: SupportedLanguage) =>
+    typeof record[language] === 'string' ? record[language].trim() : ''
+  return { en: voice('en'), zh: voice('zh'), ja: voice('ja'), ko: voice('ko') }
+}
+
+function normalizeVoicePreset(value: unknown): VoicePreset | undefined {
+  if (!isRecord(value)) return undefined
+  const id = typeof value.id === 'string' ? value.id.trim() : ''
+  const name = typeof value.name === 'string' ? value.name.trim().slice(0, 60) : ''
+  const voiceId = typeof value.voiceId === 'string' ? value.voiceId.trim() : ''
+  if (
+    !id ||
+    !name ||
+    !voiceId ||
+    typeof value.createdAt !== 'number' ||
+    !Number.isFinite(value.createdAt)
+  ) {
+    return undefined
+  }
+  return {
+    id,
+    name,
+    voiceId,
+    readingLanguage: normalizeLanguage(value.readingLanguage, 'auto'),
+    speed: clampNumber(value.speed, DEFAULT_SETTINGS.speed, 0.5, 2.5),
+    pitch: clampNumber(value.pitch, DEFAULT_SETTINGS.pitch, -50, 50),
+    volume: clampNumber(value.volume, DEFAULT_SETTINGS.volume, 0, 1),
+    createdAt: value.createdAt,
+  }
+}
+
+function normalizeVoicePresets(value: unknown): VoicePreset[] {
+  if (!Array.isArray(value)) return []
+  const presets = value
+    .map(normalizeVoicePreset)
+    .filter((preset): preset is VoicePreset => Boolean(preset))
+  return Array.from(new Map(presets.map((preset) => [preset.id, preset])).values()).slice(
+    0,
+    MAX_VOICE_ITEMS,
+  )
+}
+
 export function normalizeSettings(value: unknown): ReaderSettings {
   if (!isRecord(value)) return { ...DEFAULT_SETTINGS }
 
   const legacyVoice = typeof value.voice === 'string' ? value.voice : ''
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     voiceId: typeof value.voiceId === 'string' ? value.voiceId : legacyVoice,
+    voiceByLanguage: normalizeVoiceByLanguage(value.voiceByLanguage),
+    favoriteVoiceIds: normalizeStringList(value.favoriteVoiceIds),
+    recentVoiceIds: normalizeStringList(value.recentVoiceIds),
+    voicePresets: normalizeVoicePresets(value.voicePresets),
+    uiLanguage: normalizeLanguage(value.uiLanguage, DEFAULT_SETTINGS.uiLanguage),
+    readingLanguage: normalizeLanguage(
+      value.readingLanguage,
+      DEFAULT_SETTINGS.readingLanguage,
+    ),
     speed: clampNumber(value.speed, DEFAULT_SETTINGS.speed, 0.5, 2.5),
     pitch: clampNumber(value.pitch, DEFAULT_SETTINGS.pitch, -50, 50),
     volume: clampNumber(value.volume, DEFAULT_SETTINGS.volume, 0, 1),
@@ -73,7 +167,7 @@ export class SettingsService {
   ): Promise<ReaderSettings> {
     const operation = this.updateQueue.then(async () => {
       const current = await this.get()
-      const settings = normalizeSettings({ ...current, ...patch, schemaVersion: 2 })
+      const settings = normalizeSettings({ ...current, ...patch, schemaVersion: 3 })
       await chrome.storage.local.set({ [SETTINGS_STORAGE_KEY]: settings })
       return settings
     })

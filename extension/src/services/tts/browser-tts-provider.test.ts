@@ -14,7 +14,7 @@ class FakeUtterance {
   constructor(public readonly text: string) {}
 }
 
-function createSynthesis(endOnCancel = false) {
+function createSynthesis(endOnCancel = false, voices: SpeechSynthesisVoice[] = []) {
   const utterances: FakeUtterance[] = []
   let currentUtterance: FakeUtterance | undefined
   const synthesis = {
@@ -47,7 +47,7 @@ function createSynthesis(endOnCancel = false) {
     resume() {
       this.paused = false
     },
-    getVoices: () => [],
+    getVoices: () => voices,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(() => true),
@@ -145,5 +145,41 @@ describe('BrowserTTSProvider', () => {
 
     expect(utterances.at(-1)?.text).toBe('Second sentence.')
     expect(snapshots.some((snapshot) => snapshot.status === 'finished')).toBe(false)
+  })
+
+  it('automatically switches language and mapped voice between sentences', async () => {
+    const english = {
+      name: 'English',
+      lang: 'en-US',
+      voiceURI: 'voice-en',
+      default: true,
+      localService: true,
+    } as SpeechSynthesisVoice
+    const chinese = {
+      name: 'Chinese',
+      lang: 'zh-CN',
+      voiceURI: 'voice-zh',
+      default: false,
+      localService: true,
+    } as SpeechSynthesisVoice
+    const { synthesis, utterances } = createSynthesis(false, [english, chinese])
+    const provider = new BrowserTTSProvider(synthesis, vi.fn())
+
+    await provider.speak({
+      text: 'Hello. 你好。',
+      sentences: ['Hello.', '你好。'],
+      rate: 1,
+      pitch: 0,
+      volume: 1,
+      readingLanguage: 'auto',
+      voiceByLanguage: { zh: chinese.voiceURI },
+    })
+
+    expect(utterances[0]).toMatchObject({ lang: 'en-US', voice: english })
+    utterances[0]?.onend?.call(
+      utterances[0] as unknown as SpeechSynthesisUtterance,
+      {} as SpeechSynthesisEvent,
+    )
+    expect(utterances[1]).toMatchObject({ lang: 'zh-CN', voice: chinese })
   })
 })

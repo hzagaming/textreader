@@ -4,7 +4,7 @@ interface LogoProps {
 
 export function Logo({ compact = false }: LogoProps) {
   return (
-    <div className="flex items-center gap-2.5" aria-label="TextReader">
+    <div className="flex items-center gap-2.5" role="img" aria-label="TextReader">
       <span className="grid size-8 place-items-center rounded-[10px] bg-[var(--tr-accent)] text-[var(--tr-accent-text)] shadow-sm">
         <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" aria-hidden="true">
           <path

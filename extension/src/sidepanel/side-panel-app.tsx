@@ -1,7 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
-import type { ReaderDocument, ReaderSettings } from '@textreader/shared'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type {
+  ReaderDocument,
+  ReaderSettings,
+  ReaderStatus,
+  SupportedLanguage,
+} from '@textreader/shared'
 import { Logo } from '@/components/logo'
 import { SliderField } from '@/components/slider-field'
+import { VoiceLibrary } from '@/components/voice-library'
 import { shouldIgnoreReaderKeyboardTarget } from '@/content/reader-keyboard'
 import {
   isReaderWindowActivation,
@@ -9,6 +15,13 @@ import {
 } from '@/hooks/use-reader-connection'
 import type { TextReaderMessage } from '@/services/messaging/protocol'
 import { sendToActiveTab } from '@/services/messaging/transport'
+import {
+  createTranslator,
+  resolveUiLanguage,
+  translateErrorCode,
+  type MessageKey,
+  type Translator,
+} from '@/services/i18n/i18n'
 import { settingsService } from '@/services/settings/settings'
 import { useReaderStore } from '@/stores/reader-store'
 import { estimateSpeechSeconds, formatDuration } from '@/utils/time'
@@ -30,6 +43,7 @@ interface DocumentViewProps {
   document: ReaderDocument
   currentSentenceIndex: number
   disabled: boolean
+  translator: Translator
   onJump: (index: number) => void
 }
 
@@ -37,6 +51,7 @@ function DocumentView({
   document,
   currentSentenceIndex,
   disabled,
+  translator: t,
   onJump,
 }: DocumentViewProps) {
   const currentSentenceRef = useRef<HTMLButtonElement>(null)
@@ -62,7 +77,7 @@ function DocumentView({
     <div
       ref={scrollContainerRef}
       className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
-      aria-label="Reader document"
+      aria-label={t('readerDocument')}
     >
       <div className="mb-5">
         <h1 className="m-0 text-[19px] font-semibold leading-6 tracking-[-0.025em]">
@@ -91,7 +106,7 @@ function DocumentView({
                       : 'text-[var(--tr-muted)] hover:text-[var(--tr-text)]'
                   }`}
                   aria-current={current ? 'true' : undefined}
-                  aria-label={`Jump to sentence ${sentence.index + 1}`}
+                  aria-label={t('jumpToSentence', [String(sentence.index + 1)])}
                   onClick={() => onJump(sentence.index)}
                 >
                   {sentence.text}{' '}
@@ -108,10 +123,15 @@ function DocumentView({
 export function SidePanelApp() {
   const reader = useReaderStore((state) => state.reader)
   const readerDocument = useReaderStore((state) => state.document)
-  const connectionError = useReaderConnection()
+  const t = useMemo(
+    () => createTranslator(reader.settings.uiLanguage),
+    [reader.settings.uiLanguage],
+  )
+  const connectionError = useReaderConnection(t)
   const pageTabId = useRef<number | undefined>(undefined)
   const pageWindowId = useRef<number | undefined>(undefined)
-  const [pageTitle, setPageTitle] = useState('Current page')
+  const previewUtterance = useRef<SpeechSynthesisUtterance | undefined>(undefined)
+  const [pageTitle, setPageTitle] = useState(() => t('currentPage'))
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [toast, setToast] = useState('')
 
@@ -122,15 +142,20 @@ export function SidePanelApp() {
   const isPlaying = reader.status === 'playing'
   const isLoading = reader.status === 'loading'
   const readerError =
-    reader.status === 'error' ? 'The system voice could not play this text.' : ''
+    reader.status === 'error' ? translateErrorCode(reader.errorCode, t) : ''
   const activeToast = toast || connectionError || readerError
-  const selectedVoiceAvailable =
-    !reader.settings.voiceId ||
-    voices.some(
-      (voice) =>
-        voice.voiceURI === reader.settings.voiceId ||
-        voice.name === reader.settings.voiceId,
-    )
+  const statusMessage = t(
+    (
+      {
+        idle: 'statusIdle',
+        loading: 'statusLoading',
+        playing: 'statusPlaying',
+        paused: 'statusPaused',
+        stopped: 'statusStopped',
+        error: 'statusError',
+      } satisfies Record<ReaderStatus, MessageKey>
+    )[reader.status],
+  )
 
   useEffect(() => {
     const updateTitle = () => {
@@ -139,9 +164,9 @@ export function SidePanelApp() {
         .then(([tab]) => {
           pageTabId.current = tab?.id
           pageWindowId.current = tab?.windowId
-          setPageTitle(tab?.title || 'Current page')
+          setPageTitle(tab?.title || t('currentPage'))
         })
-        .catch(() => setPageTitle('Current page'))
+        .catch(() => setPageTitle(t('currentPage')))
     }
     updateTitle()
     const handleActivated: Parameters<typeof chrome.tabs.onActivated.addListener>[0] = (
@@ -163,7 +188,7 @@ export function SidePanelApp() {
       chrome.tabs.onActivated.removeListener(handleActivated)
       chrome.tabs.onUpdated.removeListener(handleUpdated)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const loadVoices = () => setVoices(window.speechSynthesis.getVoices())
@@ -172,9 +197,17 @@ export function SidePanelApp() {
     return () => window.speechSynthesis.removeEventListener('voiceschanged', loadVoices)
   }, [])
 
+  useEffect(
+    () => () => {
+      if (previewUtterance.current) window.speechSynthesis.cancel()
+    },
+    [],
+  )
+
   useEffect(() => {
     document.documentElement.dataset.theme = reader.settings.theme
-  }, [reader.settings.theme])
+    document.documentElement.lang = resolveUiLanguage(reader.settings.uiLanguage)
+  }, [reader.settings.theme, reader.settings.uiLanguage])
 
   useEffect(() => {
     if (!toast) return
@@ -206,12 +239,16 @@ export function SidePanelApp() {
   }, [isLoading, reader, readerDocument])
 
   const command = async (message: TextReaderMessage) => {
+    if (previewUtterance.current) {
+      window.speechSynthesis.cancel()
+      previewUtterance.current = undefined
+    }
     try {
       const response = await sendToActiveTab(message)
-      if (!response.ok) setToast(response.error.message)
+      if (!response.ok) setToast(translateErrorCode(response.error.code, t))
       return response
     } catch {
-      setToast('Unable to contact this page.')
+      setToast(t('unableToContactPage'))
       return null
     }
   }
@@ -222,12 +259,49 @@ export function SidePanelApp() {
     try {
       await settingsService.update(patch)
     } catch {
-      setToast('Unable to save this setting.')
+      setToast(t('unableToSaveSetting'))
     }
+  }
+
+  const previewVoice = async (
+    voice: SpeechSynthesisVoice,
+    language: SupportedLanguage,
+  ) => {
+    await command({ type: 'READER_STOP' })
+    const samples: Record<SupportedLanguage, string> = {
+      en: 'Hi, this is TextReader. Let me read this page for you.',
+      zh: '你好，我是 TextReader。让我为你朗读这个页面。',
+      ja: 'こんにちは、TextReaderです。このページを読み上げます。',
+      ko: '안녕하세요, TextReader입니다. 이 페이지를 읽어 드릴게요.',
+    }
+    const utterance = new SpeechSynthesisUtterance(samples[language])
+    utterance.voice = voice
+    utterance.lang = voice.lang || language
+    utterance.rate = reader.settings.speed
+    utterance.pitch = 1 + reader.settings.pitch / 50
+    utterance.volume = reader.settings.volume
+    utterance.onend = () => {
+      if (previewUtterance.current === utterance) previewUtterance.current = undefined
+    }
+    utterance.onerror = (event) => {
+      if (previewUtterance.current === utterance) previewUtterance.current = undefined
+      if (event.error !== 'canceled' && event.error !== 'interrupted')
+        setToast(t('ttsError'))
+    }
+    previewUtterance.current = utterance
+    window.speechSynthesis.speak(utterance)
   }
 
   const handlePrimary = async () => {
     await command(primaryReaderCommand(reader, hasDocument))
+  }
+
+  const openSettings = async () => {
+    try {
+      await chrome.runtime.openOptionsPage()
+    } catch {
+      setToast(t('unableToContactPage'))
+    }
   }
 
   return (
@@ -245,10 +319,10 @@ export function SidePanelApp() {
       {reader.resumeAvailable && (
         <section className="mb-3 rounded-[16px] border border-[var(--tr-border)] bg-[var(--tr-surface)] p-3.5 shadow-sm">
           <p className="m-0 text-[12px] font-semibold">
-            Continue from {Math.round(reader.progress * 100)}%?
+            {t('continueAt', [String(Math.round(reader.progress * 100))])}
           </p>
           <p className="mb-3 mt-1 text-[11px] text-[var(--tr-muted)]">
-            Your reading position was saved on this page.
+            {t('savedPosition')}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -257,7 +331,7 @@ export function SidePanelApp() {
               className="h-9 rounded-xl bg-[var(--tr-accent)] text-[12px] font-semibold text-[var(--tr-accent-text)]"
               onClick={() => void command({ type: 'CONTINUE_READING' })}
             >
-              Continue
+              {t('continueReading')}
             </button>
             <button
               type="button"
@@ -265,7 +339,7 @@ export function SidePanelApp() {
               className="h-9 rounded-xl bg-[var(--tr-soft)] text-[12px] font-medium"
               onClick={() => void command({ type: 'START_OVER' })}
             >
-              Start over
+              {t('startOver')}
             </button>
           </div>
         </section>
@@ -277,6 +351,7 @@ export function SidePanelApp() {
             document={readerDocument}
             currentSentenceIndex={reader.currentSentenceIndex}
             disabled={isLoading}
+            translator={t}
             onJump={(index) =>
               void command({ type: 'JUMP_TO_SENTENCE', payload: { index } })
             }
@@ -297,11 +372,10 @@ export function SidePanelApp() {
               </svg>
             </span>
             <h1 className="m-0 text-xl font-semibold tracking-[-0.03em]">
-              Listen to this page.
+              {t('listenTitle')}
             </h1>
             <p className="mb-5 mt-2 text-[13px] leading-5 text-[var(--tr-muted)]">
-              Extract the main article, read all page text, or select a passage on the
-              webpage.
+              {t('listenDescription')}
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -312,7 +386,7 @@ export function SidePanelApp() {
                   void command({ type: 'READ_PAGE', payload: { mode: 'article' } })
                 }
               >
-                Read article
+                {t('readArticle')}
               </button>
               <button
                 type="button"
@@ -322,7 +396,7 @@ export function SidePanelApp() {
                   void command({ type: 'READ_PAGE', payload: { mode: 'page' } })
                 }
               >
-                Read page
+                {t('readPage')}
               </button>
             </div>
           </div>
@@ -335,7 +409,7 @@ export function SidePanelApp() {
               className="grid size-9 place-items-center rounded-full bg-[var(--tr-soft)] transition hover:brightness-95 disabled:opacity-40"
               disabled={isLoading || !hasDocument || reader.currentSentenceIndex === 0}
               onClick={() => void command({ type: 'READER_PREVIOUS' })}
-              aria-label="Previous sentence"
+              aria-label={t('previousSentence')}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -351,7 +425,9 @@ export function SidePanelApp() {
               className="grid size-11 place-items-center rounded-full bg-[var(--tr-accent)] text-[var(--tr-accent-text)] shadow-md transition hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70"
               disabled={isLoading}
               onClick={() => void handlePrimary()}
-              aria-label={isLoading ? 'Starting playback' : isPlaying ? 'Pause' : 'Play'}
+              aria-label={
+                isLoading ? t('startingPlayback') : isPlaying ? t('pause') : t('play')
+              }
             >
               <PlayIcon playing={isPlaying} />
             </button>
@@ -364,7 +440,7 @@ export function SidePanelApp() {
                 reader.currentSentenceIndex >= Math.max(0, reader.sentenceCount - 1)
               }
               onClick={() => void command({ type: 'READER_NEXT' })}
-              aria-label="Next sentence"
+              aria-label={t('nextSentence')}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -379,11 +455,11 @@ export function SidePanelApp() {
           <div
             className="h-1.5 overflow-hidden rounded-full bg-[var(--tr-soft)]"
             role="progressbar"
-            aria-label="Reading progress"
+            aria-label={t('readingProgress')}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(reader.progress * 100)}
-            aria-valuetext={`${Math.round(reader.progress * 100)}% read`}
+            aria-valuetext={t('percentRead', [String(Math.round(reader.progress * 100))])}
           >
             <div
               className="h-full rounded-full bg-[var(--tr-accent)] transition-[width] duration-150"
@@ -398,29 +474,19 @@ export function SidePanelApp() {
 
         <details className="border-t border-[var(--tr-border)] px-4 py-3">
           <summary className="cursor-pointer text-[12px] font-semibold">
-            Voice & reading settings
+            {t('voiceSettings')}
           </summary>
-          <div className="mt-4 space-y-4 pb-1">
+          <div className="mt-4 max-h-[min(62vh,520px)] space-y-4 overflow-y-auto pb-1 pr-1">
+            <VoiceLibrary
+              settings={reader.settings}
+              voices={voices}
+              translator={t}
+              previewDisabled={isLoading}
+              onUpdate={updateSettings}
+              onPreview={(voice, language) => void previewVoice(voice, language)}
+            />
             <label className="block">
-              <span className="mb-2 block text-[12px] font-medium">Voice</span>
-              <select
-                className="h-10 w-full rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-3 text-[13px]"
-                value={reader.settings.voiceId}
-                onChange={(event) => void updateSettings({ voiceId: event.target.value })}
-              >
-                <option value="">System default</option>
-                {!selectedVoiceAvailable && (
-                  <option value={reader.settings.voiceId}>Unavailable saved voice</option>
-                )}
-                {voices.map((voice) => (
-                  <option key={voice.voiceURI} value={voice.voiceURI}>
-                    {voice.name} · {voice.lang}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-2 block text-[12px] font-medium">Highlight</span>
+              <span className="mb-2 block text-[12px] font-medium">{t('highlight')}</span>
               <select
                 className="h-10 w-full rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-3 text-[13px]"
                 value={reader.settings.highlightMode}
@@ -430,13 +496,13 @@ export function SidePanelApp() {
                   })
                 }
               >
-                <option value="off">Off</option>
-                <option value="sentence">Sentence</option>
-                <option value="paragraph">Paragraph</option>
+                <option value="off">{t('off')}</option>
+                <option value="sentence">{t('sentence')}</option>
+                <option value="paragraph">{t('paragraph')}</option>
               </select>
             </label>
             <SliderField
-              label="Speed"
+              label={t('speed')}
               valueLabel={`${reader.settings.speed.toFixed(2)}×`}
               value={reader.settings.speed}
               minimum={0.5}
@@ -445,7 +511,7 @@ export function SidePanelApp() {
               onChange={(speed) => void updateSettings({ speed })}
             />
             <SliderField
-              label="Pitch"
+              label={t('pitch')}
               valueLabel={`${reader.settings.pitch > 0 ? '+' : ''}${reader.settings.pitch}`}
               value={reader.settings.pitch}
               minimum={-50}
@@ -454,7 +520,7 @@ export function SidePanelApp() {
               onChange={(pitch) => void updateSettings({ pitch })}
             />
             <SliderField
-              label="Volume"
+              label={t('volume')}
               valueLabel={`${Math.round(reader.settings.volume * 100)}%`}
               value={reader.settings.volume}
               minimum={0}
@@ -467,7 +533,7 @@ export function SidePanelApp() {
       </section>
 
       <span className="sr-only" role="status" aria-live="polite">
-        Reader status: {reader.status}
+        {statusMessage}
       </span>
 
       <footer className="mt-3 grid grid-cols-[1fr_1fr_auto_auto] gap-2">
@@ -479,7 +545,7 @@ export function SidePanelApp() {
             void command({ type: 'READ_PAGE', payload: { mode: 'article' } })
           }
         >
-          Read Article
+          {t('readArticle')}
         </button>
         <button
           type="button"
@@ -487,7 +553,7 @@ export function SidePanelApp() {
           className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-2 text-[11px] font-medium"
           onClick={() => void command({ type: 'READ_PAGE', payload: { mode: 'page' } })}
         >
-          Read Page
+          {t('readPage')}
         </button>
         <button
           type="button"
@@ -495,13 +561,13 @@ export function SidePanelApp() {
           disabled={!hasDocument && !isLoading}
           onClick={() => void command({ type: 'READER_STOP' })}
         >
-          Stop
+          {t('stop')}
         </button>
         <button
           type="button"
           className="grid size-10 place-items-center rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)]"
-          onClick={() => void chrome.runtime.openOptionsPage()}
-          aria-label="Settings"
+          onClick={() => void openSettings()}
+          aria-label={t('settings')}
         >
           <svg
             viewBox="0 0 24 24"
@@ -520,7 +586,7 @@ export function SidePanelApp() {
       {activeToast && (
         <div
           role="alert"
-          className="fixed inset-x-4 bottom-16 rounded-xl bg-[#1e2530] px-3.5 py-3 text-[12px] text-white shadow-xl"
+          className="pointer-events-none fixed inset-x-4 bottom-16 rounded-xl bg-[#1e2530] px-3.5 py-3 text-[12px] text-white shadow-xl"
         >
           {activeToast}
         </div>

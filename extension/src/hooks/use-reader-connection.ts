@@ -7,6 +7,7 @@ import {
   getReaderState,
 } from '@/services/messaging/transport'
 import { settingsService } from '@/services/settings/settings'
+import type { Translator } from '@/services/i18n/i18n'
 import { useReaderStore } from '@/stores/reader-store'
 
 type TabChangeInfo = Parameters<
@@ -31,7 +32,7 @@ export function isReaderTabUpdate(
   )
 }
 
-export function useReaderConnection() {
+export function useReaderConnection(t: Translator) {
   const setReader = useReaderStore((state) => state.setReader)
   const resetReader = useReaderStore((state) => state.resetReader)
   const patchReader = useReaderStore((state) => state.patchReader)
@@ -52,7 +53,7 @@ export function useReaderConnection() {
       resetReader()
       setDocument(null)
       if (tabId === undefined) {
-        setConnectionError('No active webpage is available.')
+        setConnectionError(t('noActivePage'))
         return
       }
 
@@ -66,9 +67,7 @@ export function useReaderConnection() {
         setConnectionError('')
       } else {
         setConnectionError(
-          stateResponse.ok
-            ? 'TextReader is not available on this page.'
-            : stateResponse.error.message,
+          stateResponse.ok ? t('unavailableOnPage') : t('unableToContactPage'),
         )
       }
       if (documentResponse.ok && documentResponse.data) {
@@ -115,7 +114,7 @@ export function useReaderConnection() {
       chrome.tabs.onUpdated.removeListener(handleUpdated)
       unsubscribe()
     }
-  }, [patchReader, resetReader, setDocument, setReader])
+  }, [patchReader, resetReader, setDocument, setReader, t])
 
   return connectionError
 }

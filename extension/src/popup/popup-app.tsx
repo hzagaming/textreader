@@ -1,12 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { ReaderStatus, UiLanguage } from '@textreader/shared'
 import { Logo } from '@/components/logo'
+import {
+  createTranslator,
+  resolveUiLanguage,
+  type MessageKey,
+} from '@/services/i18n/i18n'
 import { getActiveReaderState, sendRuntimeMessage } from '@/services/messaging/transport'
 import { settingsService } from '@/services/settings/settings'
 
 export function PopupApp() {
-  const [pageTitle, setPageTitle] = useState('Current page')
+  const [uiLanguage, setUiLanguage] = useState<UiLanguage>('auto')
+  const t = useMemo(() => createTranslator(uiLanguage), [uiLanguage])
+  const [pageTitle, setPageTitle] = useState(() => t('currentPage'))
   const [tabId, setTabId] = useState<number | null>(null)
-  const [status, setStatus] = useState('Ready to read')
+  const [status, setStatus] = useState<ReaderStatus>('idle')
   const [selectionEnabled, setSelectionEnabled] = useState(true)
   const [selectionSaving, setSelectionSaving] = useState(false)
   const [feedback, setFeedback] = useState('')
@@ -18,17 +26,16 @@ export function PopupApp() {
       getActiveReaderState(),
     ])
       .then(([tabs, settings, response]) => {
-        setPageTitle(tabs[0]?.title || 'Current page')
+        const nextTranslator = createTranslator(settings.uiLanguage)
+        setPageTitle(tabs[0]?.title || nextTranslator('currentPage'))
         setTabId(tabs[0]?.id ?? null)
         setSelectionEnabled(settings.autoShowSelectionButton)
-        if (response.ok && response.data && response.data.status !== 'idle') {
-          setStatus(
-            response.data.status === 'playing' ? 'Reading now' : response.data.status,
-          )
-        }
+        setUiLanguage(settings.uiLanguage)
+        if (response.ok && response.data) setStatus(response.data.status)
         document.documentElement.dataset.theme = settings.theme
+        document.documentElement.lang = resolveUiLanguage(settings.uiLanguage)
       })
-      .catch(() => setFeedback('Unable to load TextReader settings.'))
+      .catch(() => setFeedback(createTranslator('auto')('unableToLoadSettings')))
   }, [])
 
   const toggleSelection = async () => {
@@ -41,10 +48,19 @@ export function PopupApp() {
       setSelectionEnabled(settings.autoShowSelectionButton)
       setFeedback('')
     } catch {
-      setFeedback('Unable to save this setting.')
+      setFeedback(t('unableToSaveSetting'))
     } finally {
       setSelectionSaving(false)
     }
+  }
+
+  const statusKey: Record<ReaderStatus, MessageKey> = {
+    idle: 'statusIdle',
+    loading: 'statusLoading',
+    playing: 'statusPlaying',
+    paused: 'statusPaused',
+    stopped: 'statusStopped',
+    error: 'statusError',
   }
 
   const openReader = async () => {
@@ -57,7 +73,7 @@ export function PopupApp() {
       window.close()
       return
     }
-    setFeedback(response.error.message)
+    setFeedback(t('unableToContactPage'))
   }
 
   return (
@@ -69,7 +85,7 @@ export function PopupApp() {
             {pageTitle}
           </p>
           <p className="mb-0 mt-1 text-[11px] capitalize text-[var(--tr-muted)]">
-            {status}
+            {t(statusKey[status])}
           </p>
         </div>
         <button
@@ -78,16 +94,16 @@ export function PopupApp() {
           className="h-10 w-full rounded-xl bg-[var(--tr-accent)] text-[12px] font-semibold text-[var(--tr-accent-text)] disabled:opacity-50"
           onClick={() => void openReader()}
         >
-          Open Reader
+          {t('openReader')}
         </button>
         <div className="mt-4 flex items-center justify-between border-t border-[var(--tr-border)] pt-3">
-          <span className="text-[12px]">Selection reading</span>
+          <span className="text-[12px]">{t('selectionReading')}</span>
           <button
             type="button"
             role="switch"
             disabled={selectionSaving}
             aria-checked={selectionEnabled}
-            aria-label="Toggle selection reading"
+            aria-label={t('toggleSelectionReading')}
             className={`relative h-6 w-10 rounded-full transition ${selectionEnabled ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}
             onClick={() => void toggleSelection()}
           >
@@ -97,7 +113,7 @@ export function PopupApp() {
           </button>
         </div>
         {feedback && (
-          <p className="mb-0 mt-3 text-[11px] text-[#b42318]" role="alert">
+          <p className="mb-0 mt-3 text-[11px] text-[var(--tr-danger)]" role="alert">
             {feedback}
           </p>
         )}
