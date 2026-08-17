@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DocumentTextLocator, HighlightManager } from './highlight-manager'
 
 describe('DocumentTextLocator', () => {
@@ -48,6 +48,17 @@ describe('DocumentTextLocator', () => {
 })
 
 describe('HighlightManager', () => {
+  it('does not scan the page until highlighting is requested', () => {
+    document.body.innerHTML = '<main><p>Lazy highlight text.</p></main>'
+    const createTreeWalker = vi.spyOn(document, 'createTreeWalker')
+
+    const manager = new HighlightManager(document, false)
+
+    expect(createTreeWalker).not.toHaveBeenCalled()
+    expect(manager.show('Lazy highlight text.')).toBe(true)
+    expect(createTreeWalker).toHaveBeenCalled()
+  })
+
   it('uses a reversible DOM fallback without changing page text', () => {
     document.body.innerHTML = '<main><p>First sentence. Second sentence.</p></main>'
     const original = document.body.textContent

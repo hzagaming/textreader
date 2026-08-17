@@ -8,6 +8,7 @@ export function PopupApp() {
   const [tabId, setTabId] = useState<number | null>(null)
   const [status, setStatus] = useState('Ready to read')
   const [selectionEnabled, setSelectionEnabled] = useState(true)
+  const [selectionSaving, setSelectionSaving] = useState(false)
   const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
@@ -31,6 +32,8 @@ export function PopupApp() {
   }, [])
 
   const toggleSelection = async () => {
+    if (selectionSaving) return
+    setSelectionSaving(true)
     try {
       const settings = await settingsService.update({
         autoShowSelectionButton: !selectionEnabled,
@@ -39,6 +42,8 @@ export function PopupApp() {
       setFeedback('')
     } catch {
       setFeedback('Unable to save this setting.')
+    } finally {
+      setSelectionSaving(false)
     }
   }
 
@@ -80,6 +85,7 @@ export function PopupApp() {
           <button
             type="button"
             role="switch"
+            disabled={selectionSaving}
             aria-checked={selectionEnabled}
             aria-label="Toggle selection reading"
             className={`relative h-6 w-10 rounded-full transition ${selectionEnabled ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}

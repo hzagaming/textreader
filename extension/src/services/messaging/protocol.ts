@@ -1,15 +1,9 @@
-import type {
-  ReaderDocument,
-  ReaderSettings,
-  ReaderState,
-  TextSelection,
-} from '@textreader/shared'
+import type { ReaderDocument, ReaderState } from '@textreader/shared'
 import type { TextReaderErrorCode } from '@/types/errors'
 
 export const READER_UPDATES_PORT = 'reader-updates'
 
 export type TextReaderMessage =
-  | { type: 'SELECTION_DETECTED'; payload: TextSelection }
   | { type: 'READ_TEXT'; payload: { text: string } }
   | { type: 'READ_CURRENT_SELECTION' }
   | { type: 'READ_PAGE'; payload: { mode: 'article' | 'page' } }
@@ -28,7 +22,6 @@ export type TextReaderMessage =
   | { type: 'GET_READER_DOCUMENT' }
   | { type: 'READER_STATE_CHANGED'; payload: ReaderState }
   | { type: 'READER_DOCUMENT_CHANGED'; payload: ReaderDocument }
-  | { type: 'SETTINGS_CHANGED'; payload: ReaderSettings }
   | { type: 'OPEN_SIDE_PANEL'; payload: { tabId: number } }
 
 export type ReaderUpdateMessage = Extract<
@@ -91,8 +84,6 @@ export function isTextReaderMessage(value: unknown): value is TextReaderMessage 
         isRecord(value.payload) &&
         (value.payload.mode === 'article' || value.payload.mode === 'page')
       )
-    case 'SELECTION_DETECTED':
-      return hasStringPayload(value, 'text')
     case 'READER_STATE_CHANGED':
       return (
         isRecord(value.payload) &&
@@ -108,8 +99,6 @@ export function isTextReaderMessage(value: unknown): value is TextReaderMessage 
     case 'JUMP_TO_SENTENCE':
     case 'JUMP_TO_PARAGRAPH':
       return hasNonNegativeIntegerPayload(value, 'index')
-    case 'SETTINGS_CHANGED':
-      return isRecord(value.payload) && typeof value.payload.schemaVersion === 'number'
     case 'OPEN_SIDE_PANEL':
       return hasNonNegativeIntegerPayload(value, 'tabId')
     default:

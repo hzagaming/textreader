@@ -1,6 +1,7 @@
 import type { TextSelection } from '@textreader/shared'
 
 const BUTTON_SIZE = 38
+const LARGE_HEIGHT = 46
 const LARGE_WIDTH = 224
 const GAP = 10
 const EDGE = 8
@@ -24,6 +25,7 @@ export class SelectionFloatingButton {
     const style = document.createElement('style')
     style.textContent = `
       :host { all: initial; color-scheme: light dark; }
+      :host([hidden]) { display: none !important; }
       [hidden] { display: none !important; }
       .single-wrap { position: relative; }
       button {
@@ -43,7 +45,7 @@ export class SelectionFloatingButton {
         white-space: nowrap;
       }
       .single:hover + .tip, .single:focus-visible + .tip { opacity: 1; transform: translate(-50%, 0); }
-      .choices { box-sizing: border-box; display: flex; gap: 6px; max-width: calc(100vw - ${EDGE * 2}px);
+      .choices { box-sizing: border-box; display: flex; gap: 6px; max-width: calc(100vw - ${EDGE * 2}px); width: ${LARGE_WIDTH}px;
         padding: 5px; background: rgba(20,24,31,.96); border-radius: 14px;
         border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 28px rgba(0,0,0,.24); }
       .choices button { box-shadow: none; flex: 1; height: 34px; min-width: 0; white-space: nowrap; }
@@ -85,13 +87,14 @@ export class SelectionFloatingButton {
     const width = selection.isLargeSelection
       ? Math.min(LARGE_WIDTH, availableWidth)
       : BUTTON_SIZE
-    const above = selection.rect.y - BUTTON_SIZE - GAP
+    const height = selection.isLargeSelection ? LARGE_HEIGHT : BUTTON_SIZE
+    const above = selection.rect.y - height - GAP
     const top = above >= EDGE ? above : selection.rect.y + selection.rect.height + GAP
     const left = Math.min(
       Math.max(EDGE, window.innerWidth - width - EDGE),
       Math.max(EDGE, selection.rect.x + selection.rect.width - width),
     )
-    const maxTop = Math.max(EDGE, window.innerHeight - BUTTON_SIZE - EDGE)
+    const maxTop = Math.max(EDGE, window.innerHeight - height - EDGE)
 
     Object.assign(this.host.style, {
       display: 'block',

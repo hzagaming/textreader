@@ -1,13 +1,31 @@
 import type { ReaderDocument, ReaderState } from '@textreader/shared'
 import type { MessageResponse, TextReaderMessage } from './protocol'
 
+function isMessageResponse<T>(value: unknown): value is MessageResponse<T> {
+  if (!value || typeof value !== 'object') return false
+  const response = value as Record<string, unknown>
+  if (response.ok === true) return true
+  if (response.ok !== false || !response.error || typeof response.error !== 'object')
+    return false
+  const error = response.error as Record<string, unknown>
+  return typeof error.code === 'string' && typeof error.message === 'string'
+}
+
 export async function sendRuntimeMessage<T = undefined>(
   message: TextReaderMessage,
 ): Promise<MessageResponse<T>> {
   try {
-    const response: MessageResponse<T> | undefined =
-      await chrome.runtime.sendMessage(message)
-    return response ?? { ok: true }
+    const response: unknown = await chrome.runtime.sendMessage(message)
+    if (response === undefined) return { ok: true }
+    return isMessageResponse<T>(response)
+      ? response
+      : {
+          ok: false,
+          error: {
+            code: 'UNKNOWN',
+            message: 'The extension returned an invalid response.',
+          },
+        }
   } catch (error) {
     return {
       ok: false,
@@ -20,8 +38,12 @@ export async function sendRuntimeMessage<T = undefined>(
 }
 
 export async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  return tab
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    return tab
+  } catch {
+    return undefined
+  }
 }
 
 export async function sendToActiveTab<T = undefined>(
@@ -43,7 +65,12 @@ export async function sendToTab<T = undefined>(
   message: TextReaderMessage,
 ): Promise<MessageResponse<T>> {
   try {
-    return await chrome.tabs.sendMessage(tabId, message)
+    const response: unknown = await chrome.tabs.sendMessage(tabId, message)
+    if (isMessageResponse<T>(response)) return response
+    return {
+      ok: false,
+      error: { code: 'UNKNOWN', message: 'The page returned an invalid response.' },
+    }
   } catch {
     return {
       ok: false,
@@ -57,12 +84,6 @@ export async function sendToTab<T = undefined>(
 
 export async function getActiveReaderState(): Promise<MessageResponse<ReaderState>> {
   return sendToActiveTab<ReaderState>({ type: 'GET_READER_STATE' })
-}
-
-export async function getActiveReaderDocument(): Promise<
-  MessageResponse<ReaderDocument>
-> {
-  return sendToActiveTab<ReaderDocument>({ type: 'GET_READER_DOCUMENT' })
 }
 
 export async function getReaderState(

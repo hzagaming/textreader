@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TextReader",
   "description": "Listen to selected text, extracted articles, and readable pages with customizable system voices.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "minimum_chrome_version": "116",
   "permissions": ["storage", "activeTab", "contextMenus", "sidePanel"],
   "host_permissions": ["http://*/*", "https://*/*"],

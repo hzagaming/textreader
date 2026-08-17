@@ -137,7 +137,7 @@ export class DocumentTextLocator {
 }
 
 export class HighlightManager {
-  private readonly locator: DocumentTextLocator
+  private locator: DocumentTextLocator | undefined
   private fallbackSpans: HTMLSpanElement[] = []
   private readonly useCustomHighlight: boolean
   private style: HTMLStyleElement | undefined
@@ -146,7 +146,6 @@ export class HighlightManager {
     private readonly document: Document,
     preferCustomHighlight = true,
   ) {
-    this.locator = new DocumentTextLocator(document)
     this.useCustomHighlight =
       preferCustomHighlight && typeof Highlight === 'function' && 'highlights' in CSS
   }
@@ -159,7 +158,7 @@ export class HighlightManager {
   ): boolean {
     this.clear()
     if (mode === 'off') return false
-    const range = this.locator.find(text, occurrence, within)
+    const range = this.getLocator().find(text, occurrence, within)
     if (!range) return false
 
     if (this.useCustomHighlight) {
@@ -172,7 +171,7 @@ export class HighlightManager {
   }
 
   createScope(range: Range): DocumentTextScope | undefined {
-    return this.locator.createScope(range)
+    return this.getLocator().createScope(range)
   }
 
   clear(): void {
@@ -182,7 +181,7 @@ export class HighlightManager {
       span.replaceWith(...span.childNodes)
     }
     this.fallbackSpans = []
-    if (hadFallback) this.locator.rebuild()
+    if (hadFallback) this.locator?.rebuild()
   }
 
   destroy(): void {
@@ -192,7 +191,13 @@ export class HighlightManager {
 
   rebuild(): void {
     this.clear()
-    this.locator.rebuild()
+    if (this.locator) this.locator.rebuild()
+    else this.locator = new DocumentTextLocator(this.document)
+  }
+
+  private getLocator(): DocumentTextLocator {
+    this.locator ??= new DocumentTextLocator(this.document)
+    return this.locator
   }
 
   private ensureStyle(): void {

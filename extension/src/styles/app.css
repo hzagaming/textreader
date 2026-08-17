@@ -7,11 +7,12 @@
   --tr-surface-strong: #ffffff;
   --tr-border: rgba(15, 23, 42, 0.09);
   --tr-text: #18202c;
-  --tr-muted: #707988;
+  --tr-muted: #66707f;
   --tr-accent: #202937;
   --tr-accent-text: #ffffff;
   --tr-soft: #eceff3;
   --tr-highlight: #e8edf4;
+  --tr-focus: #2563eb;
   font-family:
     Inter,
     ui-sans-serif,
@@ -34,6 +35,7 @@
   --tr-accent-text: #171a1f;
   --tr-soft: #262a31;
   --tr-highlight: #292f39;
+  --tr-focus: #60a5fa;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -49,6 +51,7 @@
     --tr-accent-text: #171a1f;
     --tr-soft: #262a31;
     --tr-highlight: #292f39;
+    --tr-focus: #60a5fa;
   }
 }
 
@@ -91,7 +94,7 @@ button:focus-visible,
 summary:focus-visible,
 select:focus-visible,
 input:focus-visible {
-  outline: 2px solid #60a5fa;
+  outline: 2px solid var(--tr-focus);
   outline-offset: 2px;
 }
 

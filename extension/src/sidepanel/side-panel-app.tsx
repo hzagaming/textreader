@@ -3,7 +3,10 @@ import type { ReaderDocument, ReaderSettings } from '@textreader/shared'
 import { Logo } from '@/components/logo'
 import { SliderField } from '@/components/slider-field'
 import { shouldIgnoreReaderKeyboardTarget } from '@/content/reader-keyboard'
-import { useReaderConnection } from '@/hooks/use-reader-connection'
+import {
+  isReaderWindowActivation,
+  useReaderConnection,
+} from '@/hooks/use-reader-connection'
 import type { TextReaderMessage } from '@/services/messaging/protocol'
 import { sendToActiveTab } from '@/services/messaging/transport'
 import { settingsService } from '@/services/settings/settings'
@@ -26,10 +29,16 @@ function PlayIcon({ playing }: { playing: boolean }) {
 interface DocumentViewProps {
   document: ReaderDocument
   currentSentenceIndex: number
+  disabled: boolean
   onJump: (index: number) => void
 }
 
-function DocumentView({ document, currentSentenceIndex, onJump }: DocumentViewProps) {
+function DocumentView({
+  document,
+  currentSentenceIndex,
+  disabled,
+  onJump,
+}: DocumentViewProps) {
   const currentSentenceRef = useRef<HTMLButtonElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -75,6 +84,7 @@ function DocumentView({ document, currentSentenceIndex, onJump }: DocumentViewPr
                   key={sentence.id}
                   ref={current ? currentSentenceRef : undefined}
                   type="button"
+                  disabled={disabled}
                   className={`inline rounded px-0.5 text-left transition-colors ${
                     current
                       ? 'bg-[var(--tr-highlight)] font-medium text-[var(--tr-text)]'
@@ -99,6 +109,8 @@ export function SidePanelApp() {
   const reader = useReaderStore((state) => state.reader)
   const readerDocument = useReaderStore((state) => state.document)
   const connectionError = useReaderConnection()
+  const pageTabId = useRef<number | undefined>(undefined)
+  const pageWindowId = useRef<number | undefined>(undefined)
   const [pageTitle, setPageTitle] = useState('Current page')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [toast, setToast] = useState('')
@@ -107,18 +119,50 @@ export function SidePanelApp() {
   const totalSeconds = estimateSpeechSeconds(speechText, reader.settings.speed)
   const elapsedSeconds = Math.round(totalSeconds * reader.progress)
   const hasDocument = Boolean(readerDocument)
-  const isPlaying = reader.status === 'playing' || reader.status === 'loading'
-  const activeToast = toast || connectionError
+  const isPlaying = reader.status === 'playing'
+  const isLoading = reader.status === 'loading'
+  const readerError =
+    reader.status === 'error' ? 'The system voice could not play this text.' : ''
+  const activeToast = toast || connectionError || readerError
+  const selectedVoiceAvailable =
+    !reader.settings.voiceId ||
+    voices.some(
+      (voice) =>
+        voice.voiceURI === reader.settings.voiceId ||
+        voice.name === reader.settings.voiceId,
+    )
 
   useEffect(() => {
     const updateTitle = () => {
-      void chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-        setPageTitle(tab?.title || 'Current page')
-      })
+      void chrome.tabs
+        .query({ active: true, currentWindow: true })
+        .then(([tab]) => {
+          pageTabId.current = tab?.id
+          pageWindowId.current = tab?.windowId
+          setPageTitle(tab?.title || 'Current page')
+        })
+        .catch(() => setPageTitle('Current page'))
     }
     updateTitle()
-    chrome.tabs.onActivated.addListener(updateTitle)
-    return () => chrome.tabs.onActivated.removeListener(updateTitle)
+    const handleActivated: Parameters<typeof chrome.tabs.onActivated.addListener>[0] = (
+      activeInfo,
+    ) => {
+      if (!isReaderWindowActivation(pageWindowId.current, activeInfo.windowId)) return
+      pageWindowId.current = activeInfo.windowId
+      updateTitle()
+    }
+    chrome.tabs.onActivated.addListener(handleActivated)
+    const handleUpdated: Parameters<typeof chrome.tabs.onUpdated.addListener>[0] = (
+      tabId,
+      changeInfo,
+    ) => {
+      if (tabId === pageTabId.current && changeInfo.title) setPageTitle(changeInfo.title)
+    }
+    chrome.tabs.onUpdated.addListener(handleUpdated)
+    return () => {
+      chrome.tabs.onActivated.removeListener(handleActivated)
+      chrome.tabs.onUpdated.removeListener(handleUpdated)
+    }
   }, [])
 
   useEffect(() => {
@@ -140,7 +184,8 @@ export function SidePanelApp() {
 
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
-      if (!readerDocument || shouldIgnoreReaderKeyboardTarget(event.target)) return
+      if (!readerDocument || isLoading || shouldIgnoreReaderKeyboardTarget(event.target))
+        return
       let message: TextReaderMessage | undefined
       if (event.code === 'Space') {
         message = primaryReaderCommand(reader, true)
@@ -158,7 +203,7 @@ export function SidePanelApp() {
     }
     document.addEventListener('keydown', handleKeyboard)
     return () => document.removeEventListener('keydown', handleKeyboard)
-  }, [reader, readerDocument])
+  }, [isLoading, reader, readerDocument])
 
   const command = async (message: TextReaderMessage) => {
     try {
@@ -186,7 +231,7 @@ export function SidePanelApp() {
   }
 
   return (
-    <main className="flex h-screen min-h-[520px] flex-col p-3.5">
+    <main className="flex h-screen min-h-[520px] flex-col p-3.5" aria-busy={isLoading}>
       <header className="mb-3 flex items-center justify-between px-1 py-1">
         <Logo />
         <span
@@ -208,6 +253,7 @@ export function SidePanelApp() {
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
+              disabled={isLoading}
               className="h-9 rounded-xl bg-[var(--tr-accent)] text-[12px] font-semibold text-[var(--tr-accent-text)]"
               onClick={() => void command({ type: 'CONTINUE_READING' })}
             >
@@ -215,6 +261,7 @@ export function SidePanelApp() {
             </button>
             <button
               type="button"
+              disabled={isLoading}
               className="h-9 rounded-xl bg-[var(--tr-soft)] text-[12px] font-medium"
               onClick={() => void command({ type: 'START_OVER' })}
             >
@@ -229,6 +276,7 @@ export function SidePanelApp() {
           <DocumentView
             document={readerDocument}
             currentSentenceIndex={reader.currentSentenceIndex}
+            disabled={isLoading}
             onJump={(index) =>
               void command({ type: 'JUMP_TO_SENTENCE', payload: { index } })
             }
@@ -258,6 +306,7 @@ export function SidePanelApp() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                disabled={isLoading}
                 className="h-10 rounded-xl bg-[var(--tr-accent)] text-[12px] font-semibold text-[var(--tr-accent-text)]"
                 onClick={() =>
                   void command({ type: 'READ_PAGE', payload: { mode: 'article' } })
@@ -267,6 +316,7 @@ export function SidePanelApp() {
               </button>
               <button
                 type="button"
+                disabled={isLoading}
                 className="h-10 rounded-xl bg-[var(--tr-soft)] text-[12px] font-medium"
                 onClick={() =>
                   void command({ type: 'READ_PAGE', payload: { mode: 'page' } })
@@ -283,7 +333,7 @@ export function SidePanelApp() {
             <button
               type="button"
               className="grid size-9 place-items-center rounded-full bg-[var(--tr-soft)] transition hover:brightness-95 disabled:opacity-40"
-              disabled={!hasDocument || reader.currentSentenceIndex === 0}
+              disabled={isLoading || !hasDocument || reader.currentSentenceIndex === 0}
               onClick={() => void command({ type: 'READER_PREVIOUS' })}
               aria-label="Previous sentence"
             >
@@ -299,9 +349,9 @@ export function SidePanelApp() {
             <button
               type="button"
               className="grid size-11 place-items-center rounded-full bg-[var(--tr-accent)] text-[var(--tr-accent-text)] shadow-md transition hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70"
-              disabled={reader.status === 'loading'}
+              disabled={isLoading}
               onClick={() => void handlePrimary()}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
+              aria-label={isLoading ? 'Starting playback' : isPlaying ? 'Pause' : 'Play'}
             >
               <PlayIcon playing={isPlaying} />
             </button>
@@ -309,6 +359,7 @@ export function SidePanelApp() {
               type="button"
               className="grid size-9 place-items-center rounded-full bg-[var(--tr-soft)] transition hover:brightness-95 disabled:opacity-40"
               disabled={
+                isLoading ||
                 !hasDocument ||
                 reader.currentSentenceIndex >= Math.max(0, reader.sentenceCount - 1)
               }
@@ -358,6 +409,9 @@ export function SidePanelApp() {
                 onChange={(event) => void updateSettings({ voiceId: event.target.value })}
               >
                 <option value="">System default</option>
+                {!selectedVoiceAvailable && (
+                  <option value={reader.settings.voiceId}>Unavailable saved voice</option>
+                )}
                 {voices.map((voice) => (
                   <option key={voice.voiceURI} value={voice.voiceURI}>
                     {voice.name} · {voice.lang}
@@ -419,6 +473,7 @@ export function SidePanelApp() {
       <footer className="mt-3 grid grid-cols-[1fr_1fr_auto_auto] gap-2">
         <button
           type="button"
+          disabled={isLoading}
           className="h-10 rounded-xl bg-[var(--tr-accent)] px-2 text-[11px] font-semibold text-[var(--tr-accent-text)]"
           onClick={() =>
             void command({ type: 'READ_PAGE', payload: { mode: 'article' } })
@@ -428,6 +483,7 @@ export function SidePanelApp() {
         </button>
         <button
           type="button"
+          disabled={isLoading}
           className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-2 text-[11px] font-medium"
           onClick={() => void command({ type: 'READ_PAGE', payload: { mode: 'page' } })}
         >
@@ -436,7 +492,7 @@ export function SidePanelApp() {
         <button
           type="button"
           className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-3 text-[11px] font-medium disabled:opacity-40"
-          disabled={!hasDocument}
+          disabled={!hasDocument && !isLoading}
           onClick={() => void command({ type: 'READER_STOP' })}
         >
           Stop
@@ -463,7 +519,7 @@ export function SidePanelApp() {
 
       {activeToast && (
         <div
-          role="status"
+          role="alert"
           className="fixed inset-x-4 bottom-16 rounded-xl bg-[#1e2530] px-3.5 py-3 text-[12px] text-white shadow-xl"
         >
           {activeToast}

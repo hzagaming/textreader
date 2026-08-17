@@ -21,7 +21,7 @@ describe('SelectionFloatingButton', () => {
       text: 'Selected text',
       pageUrl: 'https://example.com',
       pageTitle: 'Example',
-      rect: { x: 12, y: 80, width: 170, height: 180 },
+      rect: { x: 12, y: 317, width: 170, height: 1 },
       timestamp: 1,
       isLargeSelection: true,
     })
@@ -31,6 +31,7 @@ describe('SelectionFloatingButton', () => {
     )
     expect(Number.parseFloat(host?.style.left ?? '')).toBeGreaterThanOrEqual(8)
     expect(Number.parseFloat(host?.style.top ?? '')).toBeGreaterThanOrEqual(8)
+    expect(Number.parseFloat(host?.style.top ?? '')).toBeLessThanOrEqual(266)
     button.destroy()
   })
 })

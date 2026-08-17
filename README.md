@@ -6,8 +6,8 @@ This repository currently contains **Phase 1 and Phase 2**. Remote AI voices and
 
 ## Release announcements
 
-- Current: [TextReader 0.2.1](./ANNOUNCEMENT.md)
-- History: [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
+- Current: [TextReader 0.2.2](./ANNOUNCEMENT.md)
+- History: [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
 
 ## Features
 

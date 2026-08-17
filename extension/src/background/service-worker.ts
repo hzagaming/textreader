@@ -38,25 +38,28 @@ async function sendToTab(tab: chrome.tabs.Tab, message: unknown): Promise<void> 
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  void chrome.contextMenus.removeAll().then(() => {
-    chrome.contextMenus.create({
-      id: MENU_ROOT,
-      title: 'Read with TextReader',
-      contexts: ['all'],
+  void chrome.contextMenus
+    .removeAll()
+    .then(() => {
+      chrome.contextMenus.create({
+        id: MENU_ROOT,
+        title: 'Read with TextReader',
+        contexts: ['all'],
+      })
+      chrome.contextMenus.create({
+        id: MENU_READ_SELECTION,
+        parentId: MENU_ROOT,
+        title: 'Read selected text',
+        contexts: ['selection'],
+      })
+      chrome.contextMenus.create({
+        id: MENU_OPEN,
+        parentId: MENU_ROOT,
+        title: 'Open TextReader',
+        contexts: ['all'],
+      })
     })
-    chrome.contextMenus.create({
-      id: MENU_READ_SELECTION,
-      parentId: MENU_ROOT,
-      title: 'Read selected text',
-      contexts: ['selection'],
-    })
-    chrome.contextMenus.create({
-      id: MENU_OPEN,
-      parentId: MENU_ROOT,
-      title: 'Open TextReader',
-      contexts: ['all'],
-    })
-  })
+    .catch(() => undefined)
 })
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
@@ -69,7 +72,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 
   if (info.menuItemId === MENU_OPEN) {
-    void openSidePanel(tab)
+    void openSidePanel(tab).catch(() => undefined)
   }
 })
 

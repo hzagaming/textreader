@@ -45,9 +45,16 @@ function headingText(element: Element | null): string {
   return normalizeText(clone.textContent)
 }
 
+function paragraphText(element: Element): string {
+  if (!element.matches('li')) return normalizeText(element.textContent)
+  const clone = element.cloneNode(true) as Element
+  clone.querySelectorAll('ol, ul').forEach((list) => list.remove())
+  return normalizeText(clone.textContent)
+}
+
 function paragraphsFromElement(element: Element): string[] {
   const paragraphs = Array.from(element.querySelectorAll(PARAGRAPH_SELECTORS))
-    .map((node) => normalizeText(node.textContent))
+    .map(paragraphText)
     .filter((text) => text.length >= 2)
 
   if (paragraphs.length > 0) return paragraphs

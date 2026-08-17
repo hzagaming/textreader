@@ -44,13 +44,15 @@ describe('reader update connection', () => {
     const connect = vi.fn().mockReturnValueOnce(ports[0]).mockReturnValueOnce(ports[1])
     vi.stubGlobal('chrome', { runtime: { connect } })
     const onMessage = vi.fn()
-    const unsubscribe = subscribeToReaderUpdates(onMessage, 100)
+    const onReconnect = vi.fn()
+    const unsubscribe = subscribeToReaderUpdates(onMessage, 100, onReconnect)
 
     ports[0]!.emitDisconnect()
     vi.advanceTimersByTime(99)
     expect(connect).toHaveBeenCalledTimes(1)
     vi.advanceTimersByTime(1)
     expect(connect).toHaveBeenCalledTimes(2)
+    expect(onReconnect).toHaveBeenCalledOnce()
 
     ports[1]!.messageListener({ type: 'update' })
     expect(onMessage).toHaveBeenCalledWith({ type: 'update' })

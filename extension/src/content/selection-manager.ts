@@ -69,7 +69,8 @@ export class SelectionManager {
 
   private readonly handleMouseDown = (event: MouseEvent) => {
     const target = event.target instanceof Node ? event.target : null
-    if (!shouldIgnoreSelectionTarget(target)) this.hide()
+    const element = target instanceof Element ? target : target?.parentElement
+    if (!element?.closest('[data-textreader-root]')) this.hide()
   }
 
   private scheduleUpdate(delay: number): void {
@@ -96,7 +97,12 @@ export class SelectionManager {
 
     const range = browserSelection.getRangeAt(0)
     const rect = range.getBoundingClientRect()
-    if (rect.width <= 0 && rect.height <= 0) return
+    if (rect.width <= 0 && rect.height <= 0) {
+      this.selection = null
+      this.range = null
+      this.onSelection(null)
+      return
+    }
 
     this.range = range.cloneRange()
     this.selection = {

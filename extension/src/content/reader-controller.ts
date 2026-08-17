@@ -23,6 +23,7 @@ import {
 import { sendRuntimeMessage } from '@/services/messaging/transport'
 import { readingProgressService } from '@/services/progress/reading-progress'
 import { createReaderDocument } from '@/services/reader/document-factory'
+import { LatestOperation } from '@/services/reader/latest-operation'
 import { ReaderQueue } from '@/services/reader/reader-queue'
 import { DEFAULT_SETTINGS, settingsService } from '@/services/settings/settings'
 import {
@@ -51,6 +52,7 @@ export class ContentReaderController {
   private document: ReaderDocument | undefined
   private storedProgress: ReadingProgress | undefined
   private selectionScope: DocumentTextScope | undefined
+  private readonly readOperations = new LatestOperation()
   private readonly queue = new ReaderQueue()
   private readonly highlight = new HighlightManager(document)
   private readonly floatingButton = new SelectionFloatingButton(
@@ -58,7 +60,7 @@ export class ContentReaderController {
     () => void this.readPage('article', false),
   )
   private readonly selectionManager = new SelectionManager((selection) => {
-    void this.handleSelection(selection)
+    this.handleSelection(selection)
   })
   private readonly tts = new BrowserTTSProvider(window.speechSynthesis, (snapshot) => {
     this.handlePlaybackChange(snapshot)
@@ -67,8 +69,8 @@ export class ContentReaderController {
 
   async start(): Promise<void> {
     const [settings, progress] = await Promise.all([
-      settingsService.get(),
-      readingProgressService.get(window.location.href),
+      settingsService.get().catch(() => DEFAULT_SETTINGS),
+      readingProgressService.get(window.location.href).catch(() => undefined),
     ])
     this.state = { ...this.state, settings }
     this.storedProgress = progress
@@ -93,6 +95,7 @@ export class ContentReaderController {
   }
 
   stop(): void {
+    this.readOperations.cancel()
     this.selectionManager.stop()
     this.floatingButton.destroy()
     this.highlight.destroy()
@@ -102,14 +105,13 @@ export class ContentReaderController {
     document.removeEventListener('keydown', this.handleReaderKeyboard, true)
   }
 
-  private async handleSelection(selection: TextSelection | null): Promise<void> {
+  private handleSelection(selection: TextSelection | null): void {
     if (!selection) {
       this.floatingButton.hide()
       return
     }
 
     if (this.state.settings.autoShowSelectionButton) this.floatingButton.show(selection)
-    await sendRuntimeMessage({ type: 'SELECTION_DETECTED', payload: selection })
   }
 
   private async readSelection(selection: TextSelection): Promise<MessageResponse> {
@@ -122,6 +124,7 @@ export class ContentReaderController {
   }
 
   private async readText(text: string, selectionRange?: Range): Promise<MessageResponse> {
+    this.readOperations.begin()
     const normalized = text.replace(/\s+/gu, ' ').trim()
     if (!normalized) return failure('EMPTY_TEXT', 'There is no text to read.')
 
@@ -138,6 +141,8 @@ export class ContentReaderController {
     mode: ExtractionMode,
     offerResume = true,
   ): Promise<MessageResponse> {
+    const operation = this.readOperations.begin()
+    this.tts.stop(false)
     this.updateStatus('loading')
     this.highlight.clear()
 
@@ -147,6 +152,7 @@ export class ContentReaderController {
       )
       const progress =
         this.storedProgress ?? (await readingProgressService.get(window.location.href))
+      if (!this.readOperations.isCurrent(operation)) return ok()
       if (
         offerResume &&
         progress &&
@@ -160,17 +166,21 @@ export class ContentReaderController {
       }
       return this.readDocument(readerDocument, mode, 0)
     } catch (error) {
+      if (!this.readOperations.isCurrent(operation)) return ok()
       return this.handleError(error)
     }
   }
 
   private async continueReading(): Promise<MessageResponse> {
-    const progress =
-      this.storedProgress ?? (await readingProgressService.get(window.location.href))
-    const mode = progress?.source ?? (this.state.source === 'page' ? 'page' : 'article')
+    const operation = this.readOperations.begin()
+    this.tts.stop(false)
     this.updateStatus('loading')
 
     try {
+      const progress =
+        this.storedProgress ?? (await readingProgressService.get(window.location.href))
+      if (!this.readOperations.isCurrent(operation)) return ok()
+      const mode = progress?.source ?? (this.state.source === 'page' ? 'page' : 'article')
       const readerDocument = new ArticleExtractor(document, window.location.href).extract(
         mode,
       )
@@ -178,16 +188,26 @@ export class ContentReaderController {
         progress?.documentId === readerDocument.id ? progress.sentenceIndex : 0
       return this.readDocument(readerDocument, mode, startIndex)
     } catch (error) {
+      if (!this.readOperations.isCurrent(operation)) return ok()
       return this.handleError(error)
     }
   }
 
   private async startOver(): Promise<MessageResponse> {
+    const operation = this.readOperations.begin()
     const mode =
       this.storedProgress?.source ?? (this.state.source === 'page' ? 'page' : 'article')
-    await readingProgressService.clear(window.location.href)
-    this.storedProgress = undefined
-    return this.readPage(mode, false)
+    this.tts.stop(false)
+    this.updateStatus('loading')
+    try {
+      await readingProgressService.clear(window.location.href)
+      if (!this.readOperations.isCurrent(operation)) return ok()
+      this.storedProgress = undefined
+      return this.readPage(mode, false)
+    } catch (error) {
+      if (!this.readOperations.isCurrent(operation)) return ok()
+      return this.handleError(error)
+    }
   }
 
   private async readDocument(
@@ -363,7 +383,7 @@ export class ContentReaderController {
       updatedAt: Date.now(),
     }
     this.storedProgress = progress
-    void readingProgressService.save(progress)
+    void readingProgressService.save(progress).catch(() => undefined)
   }
 
   private jumpToSentence(index: number): MessageResponse {
@@ -434,6 +454,7 @@ export class ContentReaderController {
           this.tts.resume()
           return ok()
         case 'READER_STOP':
+          this.readOperations.cancel()
           this.tts.stop()
           return ok()
         case 'READER_NEXT':
@@ -454,9 +475,6 @@ export class ContentReaderController {
           return this.document
             ? ok(this.document)
             : failure('EMPTY_TEXT', 'No reader document is loaded.')
-        case 'SETTINGS_CHANGED':
-          this.applySettings(message.payload)
-          return ok()
         default:
           return failure('UNKNOWN', 'This message is not handled in the page context.')
       }
@@ -475,6 +493,10 @@ export class ContentReaderController {
   private updateStatus(status: ReaderState['status']): void {
     this.state = { ...this.state, status }
     delete this.state.errorCode
+    if (status === 'loading') {
+      delete this.state.resumeAvailable
+      delete this.state.resumeSentenceIndex
+    }
     this.broadcastState()
   }
 

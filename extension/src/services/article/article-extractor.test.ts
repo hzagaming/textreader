@@ -101,4 +101,21 @@ describe('ArticleExtractor', () => {
     expect(result.plainText).toContain('Important article introduction.')
     expect(result.plainText).not.toContain('Site navigation')
   })
+
+  it('reads nested list labels once without merging child text into the parent', () => {
+    const document = page(
+      '<html><head><title>Nested list</title></head><body><main><ul><li>Parent item<ul><li>Child item</li></ul></li><li>Sibling item</li></ul></main></body></html>',
+    )
+
+    const result = new ArticleExtractor(
+      document,
+      'https://example.com/nested-list',
+    ).extract('page')
+
+    expect(result.paragraphs.map((paragraph) => paragraph.text)).toEqual([
+      'Parent item',
+      'Child item',
+      'Sibling item',
+    ])
+  })
 })
