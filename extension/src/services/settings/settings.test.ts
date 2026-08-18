@@ -57,7 +57,7 @@ describe('normalizeSettings', () => {
     expect(
       normalizeSettings({ schemaVersion: 2, voiceId: 'Samantha', theme: 'light' }),
     ).toMatchObject({
-      schemaVersion: 3,
+      schemaVersion: 4,
       uiLanguage: 'auto',
       readingLanguage: 'auto',
       voiceId: 'Samantha',
@@ -65,7 +65,18 @@ describe('normalizeSettings', () => {
       favoriteVoiceIds: [],
       recentVoiceIds: [],
       voicePresets: [],
+      naturalExpression: true,
     })
+  })
+
+  it('migrates existing settings to natural expression and preserves opt-out', () => {
+    expect(normalizeSettings({ schemaVersion: 3 })).toMatchObject({
+      schemaVersion: 4,
+      naturalExpression: true,
+    })
+    expect(
+      normalizeSettings({ schemaVersion: 4, naturalExpression: false }),
+    ).toMatchObject({ schemaVersion: 4, naturalExpression: false })
   })
 
   it('drops malformed voice metadata and caps user collections', () => {
@@ -110,6 +121,7 @@ describe('normalizeSettings', () => {
         speed: 2.5,
         pitch: -50,
         volume: 1,
+        naturalExpression: true,
         createdAt: 10,
       },
       {
@@ -120,6 +132,7 @@ describe('normalizeSettings', () => {
         speed: 1.1,
         pitch: 5,
         volume: 0.8,
+        naturalExpression: true,
         createdAt: 11,
       },
     ])

@@ -30,6 +30,7 @@ describe('voice presets', () => {
       speed: 1.2,
       pitch: 0,
       volume: 1,
+      naturalExpression: true,
       createdAt: 42,
     })
     expect(createVoicePreset(DEFAULT_SETTINGS, 'System default', 'id', 1)).toEqual({
@@ -40,6 +41,7 @@ describe('voice presets', () => {
       speed: 1,
       pitch: 0,
       volume: 1,
+      naturalExpression: true,
       createdAt: 1,
     })
     expect(createVoicePreset(DEFAULT_SETTINGS, '   ', 'id', 1)).toBeUndefined()
@@ -65,6 +67,7 @@ describe('voice presets', () => {
       speed: 1,
       pitch: 0,
       volume: 1,
+      naturalExpression: true,
     })
     expect(removeVoicePreset([preset], 'ja')).toEqual([])
   })

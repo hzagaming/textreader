@@ -4,6 +4,7 @@ import {
   resolveReadingLanguage,
 } from '@/services/language/language'
 import { TextReaderError } from '@/types/errors'
+import { naturalProsody } from './natural-prosody'
 import { segmentText } from './segment-text'
 import { selectVoiceForLanguage } from './voice-catalog'
 
@@ -92,7 +93,13 @@ export class BrowserTTSProvider implements TTSController {
   updateRequest(
     settings: Pick<
       TTSRequest,
-      'voiceId' | 'voiceByLanguage' | 'readingLanguage' | 'rate' | 'pitch' | 'volume'
+      | 'voiceId'
+      | 'voiceByLanguage'
+      | 'readingLanguage'
+      | 'rate'
+      | 'pitch'
+      | 'volume'
+      | 'naturalExpression'
     >,
   ): void {
     if (!this.request) return
@@ -112,9 +119,18 @@ export class BrowserTTSProvider implements TTSController {
     if (!text || !request) return
 
     const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = request.rate
-    utterance.pitch = 1 + request.pitch / 50
-    utterance.volume = request.volume
+    const prosody = naturalProsody(
+      text,
+      {
+        rate: request.rate,
+        pitch: 1 + request.pitch / 50,
+        volume: request.volume,
+      },
+      request.naturalExpression === true,
+    )
+    utterance.rate = prosody.rate
+    utterance.pitch = prosody.pitch
+    utterance.volume = prosody.volume
     const readingLanguage = request.readingLanguage ?? 'auto'
     const language = resolveReadingLanguage(text, readingLanguage, request.language)
     const voices = this.synthesis.getVoices()
@@ -152,13 +168,7 @@ export class BrowserTTSProvider implements TTSController {
       }
     }
     utterance.onerror = (event) => {
-      if (
-        generation !== this.generation ||
-        event.error === 'canceled' ||
-        event.error === 'interrupted'
-      ) {
-        return
-      }
+      if (generation !== this.generation) return
       this.clearStartTimer()
       this.generation += 1
       this.emit(

@@ -20,6 +20,7 @@ export interface VoicePreset {
   speed: number
   pitch: number
   volume: number
+  naturalExpression: boolean
   createdAt: number
 }
 
@@ -38,7 +39,7 @@ export interface TextSelection {
 }
 
 export interface ReaderSettings {
-  schemaVersion: 3
+  schemaVersion: 4
   voiceId: string
   voiceByLanguage: Record<SupportedLanguage, string>
   favoriteVoiceIds: string[]
@@ -49,6 +50,7 @@ export interface ReaderSettings {
   speed: number
   pitch: number
   volume: number
+  naturalExpression: boolean
   autoShowSelectionButton: boolean
   theme: ThemePreference
   highlightMode: HighlightMode
@@ -119,6 +121,7 @@ export interface TTSRequest {
   rate: number
   pitch: number
   volume: number
+  naturalExpression?: boolean
   language?: string
   readingLanguage?: ReadingLanguage
   voiceByLanguage?: Partial<Record<SupportedLanguage, string>>

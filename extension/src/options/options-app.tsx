@@ -118,6 +118,28 @@ export function OptionsApp() {
               <option value="paragraph">{t('currentParagraph')}</option>
             </select>
           </label>
+          <div className="mt-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="m-0 text-[13px] font-medium">{t('naturalExpression')}</p>
+              <p className="mb-0 mt-1 text-[12px] text-[var(--tr-muted)]">
+                {t('naturalExpressionDescription')}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings.naturalExpression}
+              aria-label={t('naturalExpression')}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition ${settings.naturalExpression ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}
+              onClick={() =>
+                void update({ naturalExpression: !settings.naturalExpression })
+              }
+            >
+              <span
+                className={`absolute top-1 size-5 rounded-full bg-white shadow transition ${settings.naturalExpression ? 'left-6' : 'left-1'}`}
+              />
+            </button>
+          </div>
         </section>
         <section className="rounded-[18px] border border-[var(--tr-border)] bg-[var(--tr-surface)] p-5">
           <h2 className="m-0 text-[14px] font-semibold">{t('appearance')}</h2>

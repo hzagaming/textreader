@@ -35,6 +35,7 @@ export class SelectionManager {
     document.removeEventListener('mousedown', this.handleMouseDown, true)
     window.removeEventListener('resize', this.handleScroll)
     if (this.updateTimer !== undefined) window.clearTimeout(this.updateTimer)
+    this.updateTimer = undefined
   }
 
   getCurrent(): TextSelection | null {
@@ -52,17 +53,17 @@ export class SelectionManager {
   private readonly handleMouseUp = (event: MouseEvent) => {
     const target = event.target instanceof Node ? event.target : null
     if (shouldIgnoreSelectionTarget(target)) return
-    this.scheduleUpdate(0)
+    this.updateImmediately()
   }
 
-  private readonly handleSelectionChange = () => this.scheduleUpdate(80)
+  private readonly handleSelectionChange = () => this.scheduleUpdate(40)
 
   private readonly handleKeyUp = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       this.hide()
       return
     }
-    this.scheduleUpdate(0)
+    this.updateImmediately()
   }
 
   private readonly handleScroll = () => this.hide()
@@ -75,7 +76,16 @@ export class SelectionManager {
 
   private scheduleUpdate(delay: number): void {
     if (this.updateTimer !== undefined) window.clearTimeout(this.updateTimer)
-    this.updateTimer = window.setTimeout(() => this.update(), delay)
+    this.updateTimer = window.setTimeout(() => {
+      this.updateTimer = undefined
+      this.update()
+    }, delay)
+  }
+
+  private updateImmediately(): void {
+    if (this.updateTimer !== undefined) window.clearTimeout(this.updateTimer)
+    this.updateTimer = undefined
+    this.update()
   }
 
   private update(): void {

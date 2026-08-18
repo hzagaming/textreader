@@ -1,25 +1,25 @@
-# TextReader 0.3.1
+# TextReader 0.3.2
 
-Released on August 18, 2026.
+Released on August 19, 2026.
 
-TextReader 0.3.1 is a reliability and interface refinement release for the multilingual local voice reader on Chrome and Microsoft Edge.
+TextReader 0.3.2 makes local browser voices more natural, sentence handling more resilient, selection controls faster, and the compact Side Panel more reliable.
 
 ## Highlights
 
-- Added a 10-second browser TTS startup watchdog so a silent Web Speech engine cannot leave playback stuck in Loading, and invalidated late completion events after speech errors.
-- Added an explicit localized Stop preview state, preview startup recovery, synchronous error handling, and automatic preview cancellation before reader commands or setting changes.
-- Enabled presets that use the system-default voice with custom language, speed, pitch, and volume settings while retaining strict stored-data validation.
-- Fixed Side Panel language and theme initialization on browser pages where the content script cannot connect.
-- Cleared stale local error notices after successful commands and setting writes.
-- Improved 280 px / 400 px layouts, Popup responsiveness, voice selection accessibility, preset action targets, search bounds, and floating-tooltip edge positioning.
-- Removed duplicate packaged icon paths, reducing the production extension bundle to about 420 KB.
+- Added Natural expression, enabled by default and available in four interface languages. Questions, emphasis, and deliberate pauses receive subtle per-sentence pacing, pitch, and volume changes without overriding the user's base controls.
+- Saved Natural expression in local settings and voice presets, added a clear opt-out, and changed localized preview lines so the effect can be heard before reading.
+- Strengthened sentence segmentation for URLs, email addresses, decimals, numbered abbreviations, closing quotes, mixed Chinese/English/Japanese/Korean text, malformed page language tags, and unusually long clauses.
+- Removed the zero-delay timer from mouse and keyboard selection completion. Real isolated Chromium testing measured the selected-text button becoming visible in about 13 ms.
+- Fixed unexpected browser TTS interruptions leaving stale playback state, pending previews that could not be cancelled, keyboard commands bypassing preview cancellation, failed preset saves clearing the typed name, and stale settings responses overwriting newer local values.
+- Reworked the voice settings disclosure into a dedicated in-card scrolling workspace. The full settings surface now remains usable at 280 × 400, while empty readers no longer show redundant playback controls.
+- Improved system-default voice targeting, preset availability summaries, inline error presentation, and successful-action recovery from stale notices.
 
-TextReader still uses browser and operating-system speech voices only. No remote voice cloning service, credentials, SFX, BGM, tracking, or third-party secrets were added.
+Natural expression uses only standardized Web Speech rate, pitch, and volume controls; its audible result still depends on the installed browser/OS voice. TextReader does not claim neural emotion or voice cloning in local mode. No remote voice service, credentials, SFX, BGM, tracking, or third-party secrets were added.
 
 ## Verification
 
-- 25 automated test files with 86 passing tests
-- ESLint, TypeScript, production build, formatting, dependency audit, and sensitive-data checks
-- Real Chromium checks across Chinese, English, Japanese, and Korean Side Panels plus Popup and Options layouts, including 280 px / 400 px sizing, preview start/stop, system-default presets, empty voices, dark theme, focus, reduced motion, overflow, accessible button names, and console errors
+- 26 automated test files with 106 passing tests covering TTS expression, segmentation, selection latency paths, settings migration, preview races, and UI state
+- ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, and sensitive-data checks
+- Real Chromium checks across Chinese, English, Japanese, and Korean interfaces, 280 × 400 Side Panel settings scrolling, Popup and Options overflow, dark theme, accessibility names, real HTTP article synchronization, and selected-text button latency
 
-Previous announcement: [TextReader 0.3.0](./docs/announcements/history/0.3.0.md).
+Previous announcement: [TextReader 0.3.1](./docs/announcements/history/0.3.1.md).

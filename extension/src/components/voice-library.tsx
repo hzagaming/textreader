@@ -26,7 +26,7 @@ interface VoiceLibraryProps {
   translator: Translator
   previewDisabled: boolean
   previewPlaying: boolean
-  onUpdate: (patch: SettingsPatch) => Promise<void>
+  onUpdate: (patch: SettingsPatch) => Promise<boolean>
   onPreview: (voice: SpeechSynthesisVoice, language: SupportedLanguage) => void
   onStopPreview: () => void
 }
@@ -127,8 +127,10 @@ export function VoiceLibrary({
   const savePreset = async () => {
     const preset = createVoicePreset(settings, presetName)
     if (!preset) return
-    await onUpdate({ voicePresets: upsertVoicePreset(settings.voicePresets, preset) })
-    setPresetName('')
+    const saved = await onUpdate({
+      voicePresets: upsertVoicePreset(settings.voicePresets, preset),
+    })
+    if (saved) setPresetName('')
   }
 
   const applyPreset = async (preset: VoicePreset) => {
@@ -161,6 +163,29 @@ export function VoiceLibrary({
           ))}
         </select>
       </label>
+
+      <div className="flex items-center justify-between gap-3 rounded-xl bg-[var(--tr-soft)] px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="m-0 text-[12px] font-medium">{t('naturalExpression')}</p>
+          <p className="mb-0 mt-1 text-[10px] leading-4 text-[var(--tr-muted)]">
+            {t('naturalExpressionDescription')}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.naturalExpression}
+          aria-label={t('naturalExpression')}
+          className={`relative h-6 w-10 shrink-0 rounded-full transition ${settings.naturalExpression ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-surface-strong)]'}`}
+          onClick={() =>
+            void onUpdate({ naturalExpression: !settings.naturalExpression })
+          }
+        >
+          <span
+            className={`absolute top-1 size-4 rounded-full bg-white shadow-sm transition ${settings.naturalExpression ? 'left-5' : 'left-1'}`}
+          />
+        </button>
+      </div>
 
       {settings.readingLanguage === 'auto' && (
         <fieldset className="rounded-xl border border-[var(--tr-border)] p-3">
@@ -246,7 +271,7 @@ export function VoiceLibrary({
             >
               <button
                 type="button"
-                className="min-w-0 px-2.5 py-2 text-left text-[11px]"
+                className="col-span-2 min-w-0 px-2.5 py-2 text-left text-[11px]"
                 aria-pressed={!settings.voiceId}
                 onClick={() => void selectVoice('')}
               >
@@ -346,7 +371,21 @@ export function VoiceLibrary({
                 key={preset.id}
                 className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-1 rounded-lg bg-[var(--tr-soft)] px-2 py-1.5"
               >
-                <span className="truncate text-[11px] font-medium">{preset.name}</span>
+                <div className="min-w-0">
+                  <span className="block truncate text-[11px] font-medium">
+                    {preset.name}
+                  </span>
+                  <span className="block truncate text-[10px] text-[var(--tr-muted)]">
+                    {preset.voiceId
+                      ? (voices.find(
+                          (voice) =>
+                            idOf(voice) === preset.voiceId ||
+                            voice.name === preset.voiceId,
+                        )?.name ?? t('unavailableSavedVoice'))
+                      : t('systemDefault')}
+                    {` · ${preset.speed.toFixed(2)}×`}
+                  </span>
+                </div>
                 <button
                   type="button"
                   className="h-8 rounded-md px-2 text-[11px] font-semibold"

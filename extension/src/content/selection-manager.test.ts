@@ -10,6 +10,58 @@ afterEach(() => {
 })
 
 describe('SelectionManager', () => {
+  it('publishes a mouse selection before the mouseup handler returns', () => {
+    document.body.innerHTML = '<p>Instant selected text.</p>'
+    const paragraph = document.querySelector('p')!
+    const range = document.createRange()
+    range.selectNodeContents(paragraph)
+    vi.spyOn(range, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 30, 160, 24))
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      anchorNode: paragraph.firstChild,
+      getRangeAt: () => range,
+      isCollapsed: false,
+      rangeCount: 1,
+      toString: () => 'Instant selected text.',
+    } as unknown as Selection)
+    const onSelection = vi.fn()
+    const manager = new SelectionManager(onSelection)
+    manager.start()
+
+    paragraph.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+
+    expect(onSelection).toHaveBeenCalledTimes(1)
+    expect(onSelection.mock.calls[0]?.[0]).toMatchObject({
+      text: 'Instant selected text.',
+    })
+    manager.stop()
+  })
+
+  it('publishes a keyboard selection without a timer delay', () => {
+    document.body.innerHTML = '<p>Keyboard selected text.</p>'
+    const paragraph = document.querySelector('p')!
+    const range = document.createRange()
+    range.selectNodeContents(paragraph)
+    vi.spyOn(range, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 30, 180, 24))
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      anchorNode: paragraph.firstChild,
+      getRangeAt: () => range,
+      isCollapsed: false,
+      rangeCount: 1,
+      toString: () => 'Keyboard selected text.',
+    } as unknown as Selection)
+    const onSelection = vi.fn()
+    const manager = new SelectionManager(onSelection)
+    manager.start()
+
+    paragraph.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'Shift' }))
+
+    expect(onSelection).toHaveBeenCalledTimes(1)
+    expect(onSelection.mock.calls[0]?.[0]).toMatchObject({
+      text: 'Keyboard selected text.',
+    })
+    manager.stop()
+  })
+
   it('retains a clone of the selected DOM range', () => {
     vi.useFakeTimers()
     document.body.innerHTML = `

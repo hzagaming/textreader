@@ -60,6 +60,9 @@ const en = {
   speed: 'Speed',
   pitch: 'Pitch',
   volume: 'Volume',
+  naturalExpression: 'Natural expression',
+  naturalExpressionDescription:
+    'Subtly adjusts pacing and intonation for questions, emphasis, and pauses.',
   stop: 'Stop',
   settings: 'Settings',
   ttsError: 'The system voice could not play this text.',
@@ -172,6 +175,8 @@ const zh: Record<MessageKey, string> = {
   speed: '速度',
   pitch: '音调',
   volume: '音量',
+  naturalExpression: '自然表达',
+  naturalExpressionDescription: '根据疑问、强调与停顿，轻微调节朗读节奏和语调。',
   stop: '停止',
   settings: '设置',
   ttsError: '系统音色无法播放这段文字。',
@@ -281,6 +286,9 @@ const ja: Record<MessageKey, string> = {
   speed: '速度',
   pitch: 'ピッチ',
   volume: '音量',
+  naturalExpression: '自然な表現',
+  naturalExpressionDescription:
+    '疑問・強調・間に合わせて、テンポと抑揚を穏やかに調整します。',
   stop: '停止',
   settings: '設定',
   ttsError: 'システム音声でこのテキストを再生できません。',
@@ -390,6 +398,9 @@ const ko: Record<MessageKey, string> = {
   speed: '속도',
   pitch: '음높이',
   volume: '볼륨',
+  naturalExpression: '자연스러운 표현',
+  naturalExpressionDescription:
+    '질문, 강조, 쉼에 맞춰 속도와 억양을 부드럽게 조절합니다.',
   stop: '중지',
   settings: '설정',
   ttsError: '시스템 음성으로 이 텍스트를 재생할 수 없습니다.',

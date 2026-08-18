@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReaderSettings } from '@textreader/shared'
 import { isReaderUpdateEnvelope } from '@/services/messaging/protocol'
 import { subscribeToReaderUpdates } from '@/services/messaging/reader-updates-connection'
 import {
@@ -40,12 +41,24 @@ export function useReaderConnection(t: Translator) {
   const [connectionError, setConnectionError] = useState('')
   const activeTabId = useRef<number | undefined>(undefined)
   const activeWindowId = useRef<number | undefined>(undefined)
+  const localSettings = useRef<ReaderSettings | undefined>(undefined)
 
   useEffect(() => {
     let refreshVersion = 0
+    let settingsVersion = 0
+    const unsubscribeSettings = settingsService.subscribe((settings) => {
+      settingsVersion += 1
+      localSettings.current = settings
+      patchReader({ settings })
+    })
+    const initialSettingsVersion = settingsVersion
     void settingsService
       .get()
-      .then((settings) => patchReader({ settings }))
+      .then((settings) => {
+        if (settingsVersion !== initialSettingsVersion) return
+        localSettings.current = settings
+        patchReader({ settings })
+      })
       .catch(() => undefined)
     const refresh = async (requestedTabId?: number) => {
       const version = ++refreshVersion
@@ -67,7 +80,11 @@ export function useReaderConnection(t: Translator) {
       ])
       if (version !== refreshVersion || activeTabId.current !== tabId) return
       if (stateResponse.ok && stateResponse.data) {
-        setReader(stateResponse.data)
+        setReader(
+          localSettings.current
+            ? { ...stateResponse.data, settings: localSettings.current }
+            : stateResponse.data,
+        )
         setConnectionError('')
       } else {
         setConnectionError(
@@ -85,7 +102,11 @@ export function useReaderConnection(t: Translator) {
     const handleMessage = (update: unknown) => {
       if (!isReaderUpdateEnvelope(update) || update.tabId !== activeTabId.current) return
       if (update.message.type === 'READER_STATE_CHANGED') {
-        setReader(update.message.payload)
+        setReader(
+          localSettings.current
+            ? { ...update.message.payload, settings: localSettings.current }
+            : update.message.payload,
+        )
       }
       if (update.message.type === 'READER_DOCUMENT_CHANGED') {
         setDocument(update.message.payload)
@@ -110,13 +131,13 @@ export function useReaderConnection(t: Translator) {
     }
     chrome.tabs.onActivated.addListener(handleActivated)
     chrome.tabs.onUpdated.addListener(handleUpdated)
-    const unsubscribe = settingsService.subscribe((settings) => patchReader({ settings }))
     return () => {
       refreshVersion += 1
+      settingsVersion += 1
       unsubscribeUpdates()
       chrome.tabs.onActivated.removeListener(handleActivated)
       chrome.tabs.onUpdated.removeListener(handleUpdated)
-      unsubscribe()
+      unsubscribeSettings()
     }
   }, [patchReader, resetReader, setDocument, setReader, t])
 

@@ -13,7 +13,7 @@ const MAX_VOICE_ITEMS = 20
 export const SETTINGS_STORAGE_KEY = 'readerSettings'
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   voiceId: '',
   voiceByLanguage: { en: '', zh: '', ja: '', ko: '' },
   favoriteVoiceIds: [],
@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   speed: 1,
   pitch: 0,
   volume: 1,
+  naturalExpression: true,
   autoShowSelectionButton: true,
   theme: 'system',
   highlightMode: 'sentence',
@@ -104,6 +105,10 @@ function normalizeVoicePreset(value: unknown): VoicePreset | undefined {
     speed: clampNumber(value.speed, DEFAULT_SETTINGS.speed, 0.5, 2.5),
     pitch: clampNumber(value.pitch, DEFAULT_SETTINGS.pitch, -50, 50),
     volume: clampNumber(value.volume, DEFAULT_SETTINGS.volume, 0, 1),
+    naturalExpression:
+      typeof value.naturalExpression === 'boolean'
+        ? value.naturalExpression
+        : DEFAULT_SETTINGS.naturalExpression,
     createdAt: value.createdAt,
   }
 }
@@ -125,7 +130,7 @@ export function normalizeSettings(value: unknown): ReaderSettings {
   const legacyVoice = typeof value.voice === 'string' ? value.voice : ''
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     voiceId: typeof value.voiceId === 'string' ? value.voiceId : legacyVoice,
     voiceByLanguage: normalizeVoiceByLanguage(value.voiceByLanguage),
     favoriteVoiceIds: normalizeStringList(value.favoriteVoiceIds),
@@ -139,6 +144,10 @@ export function normalizeSettings(value: unknown): ReaderSettings {
     speed: clampNumber(value.speed, DEFAULT_SETTINGS.speed, 0.5, 2.5),
     pitch: clampNumber(value.pitch, DEFAULT_SETTINGS.pitch, -50, 50),
     volume: clampNumber(value.volume, DEFAULT_SETTINGS.volume, 0, 1),
+    naturalExpression:
+      typeof value.naturalExpression === 'boolean'
+        ? value.naturalExpression
+        : DEFAULT_SETTINGS.naturalExpression,
     autoShowSelectionButton:
       typeof value.autoShowSelectionButton === 'boolean'
         ? value.autoShowSelectionButton
@@ -167,7 +176,7 @@ export class SettingsService {
   ): Promise<ReaderSettings> {
     const operation = this.updateQueue.then(async () => {
       const current = await this.get()
-      const settings = normalizeSettings({ ...current, ...patch, schemaVersion: 3 })
+      const settings = normalizeSettings({ ...current, ...patch, schemaVersion: 4 })
       await chrome.storage.local.set({ [SETTINGS_STORAGE_KEY]: settings })
       return settings
     })

@@ -35,7 +35,7 @@ export function createReaderDocument(input: ReaderDocumentInput): ReaderDocument
 
   const paragraphs: ReaderParagraph[] = cleanParagraphs.flatMap((text, index) => {
     const paragraphId = `${id}-p-${index}`
-    const sentences = segmentText(text).map((sentence) => ({
+    const sentences = segmentText(text, input.language).map((sentence) => ({
       id: `${paragraphId}-s-${sentenceIndex}`,
       text: sentence,
       index: sentenceIndex++,

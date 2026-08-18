@@ -18,6 +18,7 @@ export function createVoicePreset(
     speed: settings.speed,
     pitch: settings.pitch,
     volume: settings.volume,
+    naturalExpression: settings.naturalExpression,
     createdAt,
   }
 }
@@ -41,13 +42,17 @@ export function removeVoicePreset(
 
 export function applyVoicePreset(
   preset: VoicePreset,
-): Pick<ReaderSettings, 'voiceId' | 'readingLanguage' | 'speed' | 'pitch' | 'volume'> {
+): Pick<
+  ReaderSettings,
+  'voiceId' | 'readingLanguage' | 'speed' | 'pitch' | 'volume' | 'naturalExpression'
+> {
   return {
     voiceId: preset.voiceId,
     readingLanguage: preset.readingLanguage,
     speed: preset.speed,
     pitch: preset.pitch,
     volume: preset.volume,
+    naturalExpression: preset.naturalExpression,
   }
 }
 

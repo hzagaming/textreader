@@ -244,14 +244,22 @@ export class ContentReaderController {
     this.broadcastState()
 
     try {
-      const { voiceId, voiceByLanguage, readingLanguage, speed, pitch, volume } =
-        this.state.settings
+      const {
+        voiceId,
+        voiceByLanguage,
+        readingLanguage,
+        speed,
+        pitch,
+        volume,
+        naturalExpression,
+      } = this.state.settings
       await this.tts.speak({
         text: readerDocument.plainText,
         sentences: this.queue.getSentences().map((sentence) => sentence.text),
         rate: speed,
         pitch,
         volume,
+        naturalExpression,
         readingLanguage,
         voiceByLanguage,
         startSentenceIndex: firstSentence.index,
@@ -301,6 +309,7 @@ export class ContentReaderController {
       rate: settings.speed,
       pitch: settings.pitch,
       volume: settings.volume,
+      naturalExpression: settings.naturalExpression,
     })
     if (!settings.autoShowSelectionButton) this.floatingButton.hide()
     this.applyHighlight()
