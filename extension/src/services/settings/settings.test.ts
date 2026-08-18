@@ -84,6 +84,17 @@ describe('normalizeSettings', () => {
           volume: 3,
           createdAt: 10,
         },
+        {
+          id: 'default',
+          name: 'System default',
+          voiceId: '',
+          readingLanguage: 'auto',
+          speed: 1.1,
+          pitch: 5,
+          volume: 0.8,
+          createdAt: 11,
+        },
+        { id: 'missing-voice', name: 'Missing voice field', createdAt: 12 },
         { id: '', name: '', voiceId: '' },
       ],
     })
@@ -100,6 +111,16 @@ describe('normalizeSettings', () => {
         pitch: -50,
         volume: 1,
         createdAt: 10,
+      },
+      {
+        id: 'default',
+        name: 'System default',
+        voiceId: '',
+        readingLanguage: 'auto',
+        speed: 1.1,
+        pitch: 5,
+        volume: 0.8,
+        createdAt: 11,
       },
     ])
   })

@@ -7,6 +7,8 @@ import { TextReaderError } from '@/types/errors'
 import { segmentText } from './segment-text'
 import { selectVoiceForLanguage } from './voice-catalog'
 
+const START_TIMEOUT_MS = 10_000
+
 export type PlaybackStatus = 'playing' | 'paused' | 'stopped' | 'finished' | 'error'
 
 export interface PlaybackSnapshot {
@@ -21,6 +23,7 @@ export class BrowserTTSProvider implements TTSController {
   private sentenceIndex = 0
   private request: TTSRequest | null = null
   private generation = 0
+  private startTimer: ReturnType<typeof setTimeout> | undefined
 
   constructor(
     private readonly synthesis: SpeechSynthesis,
@@ -60,6 +63,7 @@ export class BrowserTTSProvider implements TTSController {
 
   stop(emit = true): void {
     this.generation += 1
+    this.clearStartTimer()
     this.synthesis.cancel()
     if (emit) this.emit('stopped')
   }
@@ -97,6 +101,7 @@ export class BrowserTTSProvider implements TTSController {
 
   private restartCurrent(): void {
     this.generation += 1
+    this.clearStartTimer()
     this.synthesis.cancel()
     this.speakCurrent(this.generation)
   }
@@ -132,10 +137,13 @@ export class BrowserTTSProvider implements TTSController {
       voice && normalizeSupportedLanguage(voice.lang) === language ? voice.lang : language
 
     utterance.onstart = () => {
-      if (generation === this.generation) this.emit('playing')
+      if (generation !== this.generation) return
+      this.clearStartTimer()
+      this.emit('playing')
     }
     utterance.onend = () => {
       if (generation !== this.generation) return
+      this.clearStartTimer()
       if (this.sentenceIndex < this.sentences.length - 1) {
         this.sentenceIndex += 1
         this.speakCurrent(generation)
@@ -151,13 +159,38 @@ export class BrowserTTSProvider implements TTSController {
       ) {
         return
       }
+      this.clearStartTimer()
+      this.generation += 1
       this.emit(
         'error',
         new TextReaderError('TTS_ERROR', `System voice failed: ${event.error}`),
       )
     }
 
-    this.synthesis.speak(utterance)
+    this.clearStartTimer()
+    this.startTimer = setTimeout(() => {
+      if (generation !== this.generation) return
+      this.startTimer = undefined
+      this.generation += 1
+      this.synthesis.cancel()
+      this.emit(
+        'error',
+        new TextReaderError('TTS_ERROR', 'The system voice did not start.'),
+      )
+    }, START_TIMEOUT_MS)
+    try {
+      this.synthesis.speak(utterance)
+    } catch {
+      this.clearStartTimer()
+      this.generation += 1
+      this.emit('error', new TextReaderError('TTS_ERROR', 'System voice failed.'))
+    }
+  }
+
+  private clearStartTimer(): void {
+    if (this.startTimer === undefined) return
+    clearTimeout(this.startTimer)
+    this.startTimer = undefined
   }
 
   private emit(status: PlaybackStatus, error?: TextReaderError): void {

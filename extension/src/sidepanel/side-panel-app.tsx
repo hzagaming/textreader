@@ -131,9 +131,11 @@ export function SidePanelApp() {
   const pageTabId = useRef<number | undefined>(undefined)
   const pageWindowId = useRef<number | undefined>(undefined)
   const previewUtterance = useRef<SpeechSynthesisUtterance | undefined>(undefined)
+  const previewTimer = useRef<number | undefined>(undefined)
   const [pageTitle, setPageTitle] = useState(() => t('currentPage'))
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [toast, setToast] = useState('')
+  const [previewPlaying, setPreviewPlaying] = useState(false)
 
   const speechText = readerDocument?.plainText ?? reader.text
   const totalSeconds = estimateSpeechSeconds(speechText, reader.settings.speed)
@@ -199,7 +201,13 @@ export function SidePanelApp() {
 
   useEffect(
     () => () => {
-      if (previewUtterance.current) window.speechSynthesis.cancel()
+      const shouldCancel = Boolean(previewUtterance.current)
+      previewUtterance.current = undefined
+      if (previewTimer.current !== undefined) {
+        window.clearTimeout(previewTimer.current)
+        previewTimer.current = undefined
+      }
+      if (shouldCancel) window.speechSynthesis.cancel()
     },
     [],
   )
@@ -238,14 +246,22 @@ export function SidePanelApp() {
     return () => document.removeEventListener('keydown', handleKeyboard)
   }, [isLoading, reader, readerDocument])
 
-  const command = async (message: TextReaderMessage) => {
-    if (previewUtterance.current) {
-      window.speechSynthesis.cancel()
-      previewUtterance.current = undefined
+  const stopPreview = () => {
+    const shouldCancel = Boolean(previewUtterance.current)
+    previewUtterance.current = undefined
+    if (previewTimer.current !== undefined) {
+      window.clearTimeout(previewTimer.current)
+      previewTimer.current = undefined
     }
+    if (shouldCancel) window.speechSynthesis.cancel()
+    setPreviewPlaying(false)
+  }
+
+  const command = async (message: TextReaderMessage) => {
+    stopPreview()
     try {
       const response = await sendToActiveTab(message)
-      if (!response.ok) setToast(translateErrorCode(response.error.code, t))
+      setToast(response.ok ? '' : translateErrorCode(response.error.code, t))
       return response
     } catch {
       setToast(t('unableToContactPage'))
@@ -256,8 +272,10 @@ export function SidePanelApp() {
   const updateSettings = async (
     patch: Partial<Omit<ReaderSettings, 'schemaVersion'>>,
   ) => {
+    stopPreview()
     try {
       await settingsService.update(patch)
+      setToast('')
     } catch {
       setToast(t('unableToSaveSetting'))
     }
@@ -267,7 +285,13 @@ export function SidePanelApp() {
     voice: SpeechSynthesisVoice,
     language: SupportedLanguage,
   ) => {
-    await command({ type: 'READER_STOP' })
+    stopPreview()
+    try {
+      await sendToActiveTab({ type: 'READER_STOP' })
+    } catch {
+      // Preview remains available on pages that cannot run the content script.
+    }
+    setToast('')
     const samples: Record<SupportedLanguage, string> = {
       en: 'Hi, this is TextReader. Let me read this page for you.',
       zh: '你好，我是 TextReader。让我为你朗读这个页面。',
@@ -281,15 +305,33 @@ export function SidePanelApp() {
     utterance.pitch = 1 + reader.settings.pitch / 50
     utterance.volume = reader.settings.volume
     utterance.onend = () => {
-      if (previewUtterance.current === utterance) previewUtterance.current = undefined
+      if (previewUtterance.current === utterance) stopPreview()
     }
     utterance.onerror = (event) => {
-      if (previewUtterance.current === utterance) previewUtterance.current = undefined
+      if (previewUtterance.current !== utterance) return
+      stopPreview()
       if (event.error !== 'canceled' && event.error !== 'interrupted')
         setToast(t('ttsError'))
     }
+    utterance.onstart = () => {
+      if (previewUtterance.current !== utterance || previewTimer.current === undefined)
+        return
+      window.clearTimeout(previewTimer.current)
+      previewTimer.current = undefined
+    }
     previewUtterance.current = utterance
-    window.speechSynthesis.speak(utterance)
+    setPreviewPlaying(true)
+    previewTimer.current = window.setTimeout(() => {
+      if (previewUtterance.current !== utterance) return
+      stopPreview()
+      setToast(t('ttsError'))
+    }, 10_000)
+    try {
+      window.speechSynthesis.speak(utterance)
+    } catch {
+      stopPreview()
+      setToast(t('ttsError'))
+    }
   }
 
   const handlePrimary = async () => {
@@ -305,7 +347,7 @@ export function SidePanelApp() {
   }
 
   return (
-    <main className="flex h-screen min-h-[520px] flex-col p-3.5" aria-busy={isLoading}>
+    <main className="flex h-screen min-h-0 flex-col p-3.5" aria-busy={isLoading}>
       <header className="mb-3 flex items-center justify-between px-1 py-1">
         <Logo />
         <span
@@ -482,8 +524,10 @@ export function SidePanelApp() {
               voices={voices}
               translator={t}
               previewDisabled={isLoading}
+              previewPlaying={previewPlaying}
               onUpdate={updateSettings}
               onPreview={(voice, language) => void previewVoice(voice, language)}
+              onStopPreview={stopPreview}
             />
             <label className="block">
               <span className="mb-2 block text-[12px] font-medium">{t('highlight')}</span>

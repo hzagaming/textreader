@@ -77,7 +77,7 @@ export function PopupApp() {
   }
 
   return (
-    <main className="w-[320px] p-3.5">
+    <main className="w-[320px] max-w-full p-3.5">
       <div className="rounded-[18px] border border-[var(--tr-border)] bg-[var(--tr-surface)] p-4 shadow-sm">
         <Logo />
         <div className="my-4 rounded-xl bg-[var(--tr-soft)] p-3">

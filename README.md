@@ -6,8 +6,8 @@ This repository contains **Phase 1 and Phase 2**, plus the v0.3 multilingual sys
 
 ## Release announcements
 
-- Current: [TextReader 0.3.0](./ANNOUNCEMENT.md)
-- History: [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
+- Current: [TextReader 0.3.1](./ANNOUNCEMENT.md)
+- History: [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
 
 ## Features
 

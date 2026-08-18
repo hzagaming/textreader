@@ -90,7 +90,7 @@ function normalizeVoicePreset(value: unknown): VoicePreset | undefined {
   if (
     !id ||
     !name ||
-    !voiceId ||
+    typeof value.voiceId !== 'string' ||
     typeof value.createdAt !== 'number' ||
     !Number.isFinite(value.createdAt)
   ) {

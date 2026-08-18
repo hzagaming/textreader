@@ -44,10 +44,13 @@ export class SelectionFloatingButton {
       .tip {
         background: rgba(20, 24, 31, .96); border-radius: 7px; bottom: calc(100% + 7px); color: white;
         font: 500 12px/1.2 ui-sans-serif, system-ui, sans-serif; left: 50%; opacity: 0; padding: 6px 8px;
-        pointer-events: none; position: absolute; transform: translate(-50%, 3px); transition: 150ms ease;
-        white-space: nowrap;
+        max-width: calc(100vw - ${EDGE * 2}px); pointer-events: none; position: absolute;
+        transform: translate(calc(-50% + var(--tip-shift, 0px)), 3px); transition: 150ms ease;
+        white-space: normal; width: max-content;
       }
-      .single:hover + .tip, .single:focus-visible + .tip { opacity: 1; transform: translate(-50%, 0); }
+      .single:hover + .tip, .single:focus-visible + .tip {
+        opacity: 1; transform: translate(calc(-50% + var(--tip-shift, 0px)), 0);
+      }
       .choices { box-sizing: border-box; display: flex; gap: 6px; max-width: calc(100vw - ${EDGE * 2}px); width: ${LARGE_WIDTH}px;
         padding: 5px; background: rgba(20,24,31,.96); border-radius: 14px;
         border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 28px rgba(0,0,0,.24); }
@@ -107,6 +110,14 @@ export class SelectionFloatingButton {
       zIndex: '2147483647',
     })
     this.host.hidden = false
+    const tipRect = this.tip.getBoundingClientRect()
+    const shift =
+      tipRect.left < EDGE
+        ? EDGE - tipRect.left
+        : tipRect.right > window.innerWidth - EDGE
+          ? window.innerWidth - EDGE - tipRect.right
+          : 0
+    this.tip.style.setProperty('--tip-shift', `${shift}px`)
   }
 
   setLanguage(language: UiLanguage): void {

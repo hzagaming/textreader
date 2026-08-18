@@ -9,7 +9,7 @@ export function createVoicePreset(
   createdAt = Date.now(),
 ): VoicePreset | undefined {
   const normalizedName = name.trim().slice(0, 60)
-  if (!normalizedName || !settings.voiceId) return undefined
+  if (!normalizedName) return undefined
   return {
     id,
     name: normalizedName,

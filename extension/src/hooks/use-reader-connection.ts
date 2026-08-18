@@ -43,6 +43,10 @@ export function useReaderConnection(t: Translator) {
 
   useEffect(() => {
     let refreshVersion = 0
+    void settingsService
+      .get()
+      .then((settings) => patchReader({ settings }))
+      .catch(() => undefined)
     const refresh = async (requestedTabId?: number) => {
       const version = ++refreshVersion
       const activeTab = requestedTabId === undefined ? await getActiveTab() : undefined

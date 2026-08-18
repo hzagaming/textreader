@@ -32,7 +32,17 @@ describe('voice presets', () => {
       volume: 1,
       createdAt: 42,
     })
-    expect(createVoicePreset(DEFAULT_SETTINGS, 'Empty', 'id', 1)).toBeUndefined()
+    expect(createVoicePreset(DEFAULT_SETTINGS, 'System default', 'id', 1)).toEqual({
+      id: 'id',
+      name: 'System default',
+      voiceId: '',
+      readingLanguage: 'auto',
+      speed: 1,
+      pitch: 0,
+      volume: 1,
+      createdAt: 1,
+    })
+    expect(createVoicePreset(DEFAULT_SETTINGS, '   ', 'id', 1)).toBeUndefined()
   })
 
   it('upserts, applies, and removes bounded presets', () => {

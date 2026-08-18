@@ -25,8 +25,10 @@ interface VoiceLibraryProps {
   voices: SpeechSynthesisVoice[]
   translator: Translator
   previewDisabled: boolean
+  previewPlaying: boolean
   onUpdate: (patch: SettingsPatch) => Promise<void>
   onPreview: (voice: SpeechSynthesisVoice, language: SupportedLanguage) => void
+  onStopPreview: () => void
 }
 
 function idOf(voice: SpeechSynthesisVoice): string {
@@ -50,8 +52,10 @@ export function VoiceLibrary({
   voices,
   translator: t,
   previewDisabled,
+  previewPlaying,
   onUpdate,
   onPreview,
+  onStopPreview,
 }: VoiceLibraryProps) {
   const [query, setQuery] = useState('')
   const [languageFilter, setLanguageFilter] = useState<VoiceFilterLanguage>('all')
@@ -130,7 +134,9 @@ export function VoiceLibrary({
   const applyPreset = async (preset: VoicePreset) => {
     await onUpdate({
       ...applyVoicePreset(preset),
-      recentVoiceIds: addRecentVoice(settings.recentVoiceIds, preset.voiceId),
+      recentVoiceIds: preset.voiceId
+        ? addRecentVoice(settings.recentVoiceIds, preset.voiceId)
+        : settings.recentVoiceIds,
     })
   }
 
@@ -196,7 +202,7 @@ export function VoiceLibrary({
         )}
         <div className="mb-2 flex items-center justify-between gap-2">
           <span className="text-[12px] font-semibold">{t('voiceLibrary')}</span>
-          <label className="flex items-center gap-1.5 text-[10px] text-[var(--tr-muted)]">
+          <label className="flex items-center gap-1.5 text-[11px] text-[var(--tr-muted)]">
             <input
               type="checkbox"
               checked={favoritesOnly}
@@ -208,6 +214,7 @@ export function VoiceLibrary({
         <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
           <input
             type="search"
+            maxLength={80}
             className="h-9 min-w-0 rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-2.5 text-[12px]"
             placeholder={t('searchVoices')}
             value={query}
@@ -234,12 +241,13 @@ export function VoiceLibrary({
         <div className="mt-2 max-h-44 space-y-1 overflow-y-auto pr-1" role="list">
           {showSystemDefault && (
             <div
-              className={`grid grid-cols-[minmax(0,1fr)_34px] items-center rounded-lg border ${settings.voiceId ? 'border-transparent' : 'border-[var(--tr-focus)] bg-[var(--tr-highlight)]'}`}
+              className={`grid grid-cols-[minmax(0,1fr)_38px] items-center rounded-lg border ${settings.voiceId ? 'border-transparent' : 'border-[var(--tr-focus)] bg-[var(--tr-highlight)]'}`}
               role="listitem"
             >
               <button
                 type="button"
                 className="min-w-0 px-2.5 py-2 text-left text-[11px]"
+                aria-pressed={!settings.voiceId}
                 onClick={() => void selectVoice('')}
               >
                 {t('systemDefault')}
@@ -253,12 +261,13 @@ export function VoiceLibrary({
             return (
               <div
                 key={`${id}-${voice.lang}`}
-                className={`grid grid-cols-[minmax(0,1fr)_34px] items-center rounded-lg border ${selected ? 'border-[var(--tr-focus)] bg-[var(--tr-highlight)]' : 'border-transparent hover:bg-[var(--tr-soft)]'}`}
+                className={`grid grid-cols-[minmax(0,1fr)_38px] items-center rounded-lg border ${selected ? 'border-[var(--tr-focus)] bg-[var(--tr-highlight)]' : 'border-transparent hover:bg-[var(--tr-soft)]'}`}
                 role="listitem"
               >
                 <button
                   type="button"
                   className="min-w-0 px-2.5 py-1.5 text-left"
+                  aria-pressed={selected}
                   onClick={() => void selectVoice(id)}
                 >
                   <span className="block truncate text-[11px] font-medium">
@@ -272,7 +281,7 @@ export function VoiceLibrary({
                 </button>
                 <button
                   type="button"
-                  className="grid size-8 place-items-center rounded-lg text-[15px]"
+                  className="grid size-9 place-items-center rounded-lg text-[15px]"
                   aria-label={favorite ? t('unfavoriteVoice') : t('favoriteVoice')}
                   aria-pressed={favorite}
                   onClick={() =>
@@ -298,11 +307,15 @@ export function VoiceLibrary({
 
         <button
           type="button"
-          disabled={!previewVoice || previewDisabled}
+          disabled={!previewPlaying && (!previewVoice || previewDisabled)}
           className="mt-2 h-9 w-full rounded-lg bg-[var(--tr-soft)] text-[11px] font-semibold disabled:opacity-45"
-          onClick={() => previewVoice && onPreview(previewVoice, previewLanguage)}
+          aria-pressed={previewPlaying}
+          onClick={() => {
+            if (previewPlaying) onStopPreview()
+            else if (previewVoice) onPreview(previewVoice, previewLanguage)
+          }}
         >
-          {t('previewVoice')}
+          {t(previewPlaying ? 'stopPreview' : 'previewVoice')}
         </button>
       </section>
 
@@ -319,7 +332,7 @@ export function VoiceLibrary({
           />
           <button
             type="button"
-            disabled={!presetName.trim() || !settings.voiceId}
+            disabled={!presetName.trim()}
             className="rounded-lg bg-[var(--tr-accent)] px-3 text-[11px] font-semibold text-[var(--tr-accent-text)] disabled:opacity-45"
             onClick={() => void savePreset()}
           >
@@ -336,14 +349,14 @@ export function VoiceLibrary({
                 <span className="truncate text-[11px] font-medium">{preset.name}</span>
                 <button
                   type="button"
-                  className="rounded-md px-2 py-1 text-[10px] font-semibold"
+                  className="h-8 rounded-md px-2 text-[11px] font-semibold"
                   onClick={() => void applyPreset(preset)}
                 >
                   {t('applyPreset')}
                 </button>
                 <button
                   type="button"
-                  className="rounded-md px-2 py-1 text-[10px] text-[var(--tr-muted)]"
+                  className="h-8 rounded-md px-2 text-[11px] text-[var(--tr-muted)]"
                   aria-label={`${t('deletePreset')} ${preset.name}`}
                   onClick={() =>
                     void onUpdate({

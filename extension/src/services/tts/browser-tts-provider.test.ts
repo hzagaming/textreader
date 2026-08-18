@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrowserTTSProvider, type PlaybackSnapshot } from './browser-tts-provider'
 
 class FakeUtterance {
@@ -14,7 +14,11 @@ class FakeUtterance {
   constructor(public readonly text: string) {}
 }
 
-function createSynthesis(endOnCancel = false, voices: SpeechSynthesisVoice[] = []) {
+function createSynthesis(
+  endOnCancel = false,
+  voices: SpeechSynthesisVoice[] = [],
+  startImmediately = true,
+) {
   const utterances: FakeUtterance[] = []
   let currentUtterance: FakeUtterance | undefined
   const synthesis = {
@@ -26,10 +30,12 @@ function createSynthesis(endOnCancel = false, voices: SpeechSynthesisVoice[] = [
       utterances.push(utterance)
       currentUtterance = utterance
       this.speaking = true
-      utterance.onstart?.call(
-        utterance as unknown as SpeechSynthesisUtterance,
-        {} as SpeechSynthesisEvent,
-      )
+      if (startImmediately) {
+        utterance.onstart?.call(
+          utterance as unknown as SpeechSynthesisUtterance,
+          {} as SpeechSynthesisEvent,
+        )
+      }
     },
     cancel() {
       this.speaking = false
@@ -60,6 +66,8 @@ describe('BrowserTTSProvider', () => {
   beforeEach(() => {
     vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
   })
+
+  afterEach(() => vi.useRealTimers())
 
   it('reads sentence-by-sentence and reports completion', async () => {
     const snapshots: PlaybackSnapshot[] = []
@@ -181,5 +189,59 @@ describe('BrowserTTSProvider', () => {
       {} as SpeechSynthesisEvent,
     )
     expect(utterances[1]).toMatchObject({ lang: 'zh-CN', voice: chinese })
+  })
+
+  it('reports an error when the browser voice never starts', async () => {
+    vi.useFakeTimers()
+    const snapshots: PlaybackSnapshot[] = []
+    const { synthesis } = createSynthesis(false, [], false)
+    const provider = new BrowserTTSProvider(synthesis, (snapshot) =>
+      snapshots.push(snapshot),
+    )
+
+    await provider.speak({ text: 'Read this.', rate: 1, pitch: 0, volume: 1 })
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(synthesis.speaking).toBe(false)
+    expect(snapshots.at(-1)).toMatchObject({
+      status: 'error',
+      error: { code: 'TTS_ERROR' },
+    })
+  })
+
+  it('clears the startup timeout when playback is stopped', async () => {
+    vi.useFakeTimers()
+    const snapshots: PlaybackSnapshot[] = []
+    const { synthesis } = createSynthesis(false, [], false)
+    const provider = new BrowserTTSProvider(synthesis, (snapshot) =>
+      snapshots.push(snapshot),
+    )
+
+    await provider.speak({ text: 'Read this.', rate: 1, pitch: 0, volume: 1 })
+    provider.stop()
+    await vi.advanceTimersByTimeAsync(10_000)
+
+    expect(snapshots).toHaveLength(1)
+    expect(snapshots[0]?.status).toBe('stopped')
+  })
+
+  it('ignores a late end event after a playback error', async () => {
+    const snapshots: PlaybackSnapshot[] = []
+    const { synthesis, utterances } = createSynthesis()
+    const provider = new BrowserTTSProvider(synthesis, (snapshot) =>
+      snapshots.push(snapshot),
+    )
+
+    await provider.speak({ text: 'Read this.', rate: 1, pitch: 0, volume: 1 })
+    utterances[0]?.onerror?.call(
+      utterances[0] as unknown as SpeechSynthesisUtterance,
+      { error: 'synthesis-failed' } as SpeechSynthesisErrorEvent,
+    )
+    utterances[0]?.onend?.call(
+      utterances[0] as unknown as SpeechSynthesisUtterance,
+      {} as SpeechSynthesisEvent,
+    )
+
+    expect(snapshots.at(-1)?.status).toBe('error')
   })
 })
