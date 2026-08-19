@@ -60,7 +60,7 @@ export class SelectionManager {
 
   private readonly handleKeyUp = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
-      this.hide()
+      this.clear()
       return
     }
     this.updateImmediately()
@@ -88,6 +88,14 @@ export class SelectionManager {
     this.update()
   }
 
+  private clear(): void {
+    if (this.updateTimer !== undefined) window.clearTimeout(this.updateTimer)
+    this.updateTimer = undefined
+    this.selection = null
+    this.range = null
+    this.onSelection(null)
+  }
+
   private update(): void {
     const browserSelection = window.getSelection()
     const text = browserSelection?.toString() ?? ''
@@ -99,18 +107,14 @@ export class SelectionManager {
       !isMeaningfulSelectionText(text) ||
       shouldIgnoreSelectionTarget(browserSelection.anchorNode)
     ) {
-      this.selection = null
-      this.range = null
-      this.onSelection(null)
+      this.clear()
       return
     }
 
     const range = browserSelection.getRangeAt(0)
     const rect = range.getBoundingClientRect()
     if (rect.width <= 0 && rect.height <= 0) {
-      this.selection = null
-      this.range = null
-      this.onSelection(null)
+      this.clear()
       return
     }
 

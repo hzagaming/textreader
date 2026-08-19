@@ -33,6 +33,21 @@ describe('segmentText', () => {
     ])
   })
 
+  it('distinguishes contextual abbreviations from real sentence endings', () => {
+    expect(segmentText('Use pens, paper, etc. Next sentence.')).toEqual([
+      'Use pens, paper, etc.',
+      'Next sentence.',
+    ])
+    expect(segmentText('No. This is a separate answer.')).toEqual([
+      'No.',
+      'This is a separate answer.',
+    ])
+    expect(segmentText('Pens, paper, etc. remain useful. No. 2 is next.')).toEqual([
+      'Pens, paper, etc. remain useful.',
+      'No. 2 is next.',
+    ])
+  })
+
   it('keeps URLs, email addresses, and numbered abbreviations intact', () => {
     expect(
       segmentText(
@@ -80,10 +95,31 @@ describe('segmentText', () => {
     expect(segments.join(' ')).toBe(text.trim())
   })
 
+  it('does not split combining marks or emoji sequences in long text', () => {
+    const texts = [
+      `${'a'.repeat(279)}e\u0301${'b'.repeat(20)}.`,
+      `${'a'.repeat(278)}👩‍💻${'b'.repeat(20)}.`,
+    ]
+
+    for (const text of texts) {
+      const segments = segmentText(text)
+      expect(segments.length).toBeGreaterThan(1)
+      expect(segments.every((segment) => !/^[\p{M}\u200d]/u.test(segment))).toBe(true)
+      expect(segments.join('')).toBe(text)
+    }
+  })
+
   it('falls back safely for malformed webpage language tags', () => {
     expect(segmentText('First sentence. 第二句。', 'not_a_valid_locale!')).toEqual([
       'First sentence.',
       '第二句。',
+    ])
+  })
+
+  it('treats explicit line breaks as sentence boundaries', () => {
+    expect(segmentText('First paragraph\n\nSecond paragraph')).toEqual([
+      'First paragraph',
+      'Second paragraph',
     ])
   })
 })

@@ -146,4 +146,30 @@ describe('SelectionManager', () => {
     expect(onSelection).not.toHaveBeenCalled()
     manager.stop()
   })
+
+  it('clears the cached selection when Escape dismisses it', () => {
+    document.body.innerHTML = '<p>Dismiss selected text.</p>'
+    const paragraph = document.querySelector('p')!
+    const range = document.createRange()
+    range.selectNodeContents(paragraph)
+    vi.spyOn(range, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 30, 160, 24))
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      anchorNode: paragraph.firstChild,
+      getRangeAt: () => range,
+      isCollapsed: false,
+      rangeCount: 1,
+      toString: () => 'Dismiss selected text.',
+    } as unknown as Selection)
+    const onSelection = vi.fn()
+    const manager = new SelectionManager(onSelection)
+    manager.start()
+    paragraph.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+
+    paragraph.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: 'Escape' }))
+
+    expect(manager.getCurrent()).toBeNull()
+    expect(manager.getCurrentRange()).toBeNull()
+    expect(onSelection).toHaveBeenLastCalledWith(null)
+    manager.stop()
+  })
 })

@@ -4,6 +4,7 @@ import { isReaderUpdateEnvelope, isTextReaderMessage } from './protocol'
 describe('isTextReaderMessage', () => {
   it('accepts known messages with valid payloads', () => {
     expect(isTextReaderMessage({ type: 'READER_PAUSE' })).toBe(true)
+    expect(isTextReaderMessage({ type: 'VOICE_PREVIEW_STOP' })).toBe(true)
     expect(
       isTextReaderMessage({ type: 'READ_TEXT', payload: { text: 'Hello world' } }),
     ).toBe(true)

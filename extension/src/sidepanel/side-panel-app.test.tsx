@@ -51,9 +51,19 @@ const voice = {
   localService: true,
 } as SpeechSynthesisVoice
 
+const chineseVoice = {
+  name: 'Local Chinese',
+  lang: 'zh-CN',
+  voiceURI: 'voice-zh',
+  default: false,
+  localService: true,
+} as SpeechSynthesisVoice
+
 let root: Root | undefined
 let speak: ReturnType<typeof vi.fn>
 let cancel: ReturnType<typeof vi.fn>
+let getVoices: ReturnType<typeof vi.fn>
+let runtimeMessageListener: Parameters<typeof chrome.runtime.onMessage.addListener>[0]
 
 function button(label: string): HTMLButtonElement {
   const match = [...document.querySelectorAll('button')].find(
@@ -90,6 +100,7 @@ beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   speak = vi.fn()
   cancel = vi.fn()
+  getVoices = vi.fn(() => [voice])
   vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance)
   vi.stubGlobal('speechSynthesis', {
     speaking: false,
@@ -99,12 +110,22 @@ beforeEach(() => {
     cancel,
     pause: vi.fn(),
     resume: vi.fn(),
-    getVoices: vi.fn(() => [voice]),
+    getVoices,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   })
   vi.stubGlobal('chrome', {
-    runtime: { openOptionsPage: vi.fn() },
+    runtime: {
+      openOptionsPage: vi.fn(),
+      onMessage: {
+        addListener: vi.fn(
+          (listener: Parameters<typeof chrome.runtime.onMessage.addListener>[0]) => {
+            runtimeMessageListener = listener
+          },
+        ),
+        removeListener: vi.fn(),
+      },
+    },
     tabs: {
       query: vi.fn().mockResolvedValue([{ id: 1, windowId: 1, title: 'Example' }]),
       onActivated: { addListener: vi.fn(), removeListener: vi.fn() },
@@ -126,6 +147,30 @@ afterEach(() => {
 })
 
 describe('SidePanel voice preview', () => {
+  it('shows one primary action set when no document is loaded', async () => {
+    await renderApp(false, false)
+
+    expect(
+      [...document.querySelectorAll('button')].filter(
+        (candidate) => candidate.textContent?.trim() === 'Read Article',
+      ),
+    ).toHaveLength(1)
+    expect(
+      [...document.querySelectorAll('button')].filter(
+        (candidate) => candidate.textContent?.trim() === 'Read Page',
+      ),
+    ).toHaveLength(1)
+  })
+
+  it('keeps empty-state actions in the scroll flow on short panels', async () => {
+    await renderApp(false, false)
+    const emptyState = document.querySelector('[data-reader-empty]')
+
+    expect(emptyState?.className).toContain('overflow-y-auto')
+    expect(emptyState?.className).not.toContain('justify-center')
+    expect(emptyState?.firstElementChild?.className).toContain('my-auto')
+  })
+
   it('gives the voice settings panel the reader workspace while it is open', async () => {
     await renderApp(false, false)
     const settingsButton = button('Voice & reading settings')
@@ -172,6 +217,27 @@ describe('SidePanel voice preview', () => {
     expect(utterance).toMatchObject({ rate: 0.97, pitch: 1.08 })
   })
 
+  it('previews the interface language when automatic voice selection is used', async () => {
+    getVoices.mockReturnValue([voice, chineseVoice])
+    useReaderStore
+      .getState()
+      .setReader(createIdleReaderState({ ...DEFAULT_SETTINGS, uiLanguage: 'zh' }))
+    await renderApp(false, false)
+    act(() => button('音色与朗读设置').click())
+    await vi.waitFor(() => expect(button('试听音色').disabled).toBe(false))
+
+    await act(async () => {
+      button('试听音色').click()
+      await Promise.resolve()
+    })
+
+    expect(speak.mock.calls[0]?.[0]).toMatchObject({
+      text: '你好，我是 TextReader。准备好一起聆听这个页面了吗？',
+      voice: chineseVoice,
+      lang: 'zh-CN',
+    })
+  })
+
   it('can cancel a preview while the reader stop request is still pending', async () => {
     let resolveStop: ((response: MessageResponse) => void) | undefined
     mocks.sendToActiveTab.mockReturnValueOnce(
@@ -216,6 +282,40 @@ describe('SidePanel voice preview', () => {
     })
 
     expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('stops an active preview when the global command requests it', async () => {
+    await renderApp()
+    await act(async () => {
+      button('Preview voice').click()
+      await Promise.resolve()
+    })
+
+    act(() => {
+      runtimeMessageListener({ type: 'VOICE_PREVIEW_STOP' }, {}, vi.fn())
+    })
+
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(button('Preview voice').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('does not cancel the speech engine after a preview finishes naturally', async () => {
+    await renderApp()
+    await act(async () => {
+      button('Preview voice').click()
+      await Promise.resolve()
+    })
+    const utterance = speak.mock.calls[0]?.[0] as FakeUtterance | undefined
+
+    act(() => {
+      utterance?.onend?.call(
+        utterance as unknown as SpeechSynthesisUtterance,
+        {} as SpeechSynthesisEvent,
+      )
+    })
+
+    expect(cancel).not.toHaveBeenCalled()
+    expect(button('Preview voice').getAttribute('aria-pressed')).toBe('false')
   })
 
   it('keeps a preset name when saving settings fails', async () => {

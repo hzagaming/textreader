@@ -1,25 +1,25 @@
-# TextReader 0.3.2
+# TextReader 0.3.3
 
 Released on August 19, 2026.
 
-TextReader 0.3.2 makes local browser voices more natural, sentence handling more resilient, selection controls faster, and the compact Side Panel more reliable.
+TextReader 0.3.3 is a focused reliability and polish release for natural local speech, intelligent sentence boundaries, instant selection reading, and compact layouts.
 
 ## Highlights
 
-- Added Natural expression, enabled by default and available in four interface languages. Questions, emphasis, and deliberate pauses receive subtle per-sentence pacing, pitch, and volume changes without overriding the user's base controls.
-- Saved Natural expression in local settings and voice presets, added a clear opt-out, and changed localized preview lines so the effect can be heard before reading.
-- Strengthened sentence segmentation for URLs, email addresses, decimals, numbered abbreviations, closing quotes, mixed Chinese/English/Japanese/Korean text, malformed page language tags, and unusually long clauses.
-- Removed the zero-delay timer from mouse and keyboard selection completion. Real isolated Chromium testing measured the selected-text button becoming visible in about 13 ms.
-- Fixed unexpected browser TTS interruptions leaving stale playback state, pending previews that could not be cancelled, keyboard commands bypassing preview cancellation, failed preset saves clearing the typed name, and stale settings responses overwriting newer local values.
-- Reworked the voice settings disclosure into a dedicated in-card scrolling workspace. The full settings surface now remains usable at 280 × 400, while empty readers no longer show redundant playback controls.
-- Improved system-default voice targeting, preset availability summaries, inline error presentation, and successful-action recovery from stale notices.
+- Corrected contextual abbreviation handling so sentence-final `etc.` and `No.` no longer swallow the next sentence, while inline abbreviations such as `etc. remains` and `No. 2` stay intact.
+- Preserved explicit line breaks as speech boundaries and made long-text splitting grapheme-safe, preventing combining marks and emoji ZWJ sequences from being cut apart.
+- Extended Natural expression detection to Japanese and Chinese closing marks, and made automatic system-voice previews prefer the current interface language when a matching voice is installed.
+- Started selection monitoring before asynchronous settings and progress reads finish, while protecting newer settings from stale startup responses. Escape now clears the cached selection as well as dismissing its control.
+- Stopped Side Panel previews from both global reading shortcuts, and removed redundant `speechSynthesis.cancel()` calls after previews finish or fail naturally.
+- Fixed the Options page's stale settings initialization and stale load-error races.
+- Removed duplicated empty-reader actions and refined the 280 × 400 layout so short panels keep the explanation and primary actions fully visible, including when an error notice is present.
 
-Natural expression uses only standardized Web Speech rate, pitch, and volume controls; its audible result still depends on the installed browser/OS voice. TextReader does not claim neural emotion or voice cloning in local mode. No remote voice service, credentials, SFX, BGM, tracking, or third-party secrets were added.
+Natural expression remains a subtle adjustment of standardized Web Speech rate, pitch, and volume. Its audible result depends on the installed browser/OS voice; this release does not add neural emotion, voice cloning, a remote TTS provider, SFX, BGM, tracking, credentials, or third-party secrets.
 
 ## Verification
 
-- 26 automated test files with 106 passing tests covering TTS expression, segmentation, selection latency paths, settings migration, preview races, and UI state
-- ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, and sensitive-data checks
-- Real Chromium checks across Chinese, English, Japanese, and Korean interfaces, 280 × 400 Side Panel settings scrolling, Popup and Options overflow, dark theme, accessibility names, real HTTP article synchronization, and selected-text button latency
+- 29 automated test files with 122 passing tests covering TTS expression, contextual and grapheme-safe segmentation, early selection startup, settings races, preview lifecycle, shortcuts, and compact UI states
+- ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, diff validation, and sensitive-data checks
+- Real Chromium checks across Chinese, English, Japanese, and Korean interfaces, light/dark themes, 280 × 400 Side Panel error and settings states, Popup and Options overflow, accessible button names, settings reachability, console errors, and a measured 5 ms selected-text button path
 
-Previous announcement: [TextReader 0.3.1](./docs/announcements/history/0.3.1.md).
+Previous announcement: [TextReader 0.3.2](./docs/announcements/history/0.3.2.md).

@@ -109,3 +109,18 @@ input:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+@media (max-height: 460px) {
+  .tr-reader-empty {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .tr-reader-empty-icon {
+    display: none;
+  }
+
+  .tr-reader-empty-description {
+    margin-bottom: 0.75rem;
+  }
+}

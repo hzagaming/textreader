@@ -22,6 +22,7 @@ export type TextReaderMessage =
   | { type: 'GET_READER_DOCUMENT' }
   | { type: 'READER_STATE_CHANGED'; payload: ReaderState }
   | { type: 'READER_DOCUMENT_CHANGED'; payload: ReaderDocument }
+  | { type: 'VOICE_PREVIEW_STOP' }
   | { type: 'OPEN_SIDE_PANEL'; payload: { tabId: number } }
 
 export type ReaderUpdateMessage = Extract<
@@ -51,6 +52,7 @@ const PAYLOAD_FREE_TYPES = new Set<TextReaderMessage['type']>([
   'READER_PREVIOUS_PARAGRAPH',
   'GET_READER_STATE',
   'GET_READER_DOCUMENT',
+  'VOICE_PREVIEW_STOP',
 ])
 
 function isRecord(value: unknown): value is Record<string, unknown> {

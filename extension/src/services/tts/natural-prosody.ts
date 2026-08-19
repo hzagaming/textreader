@@ -16,7 +16,7 @@ export function naturalProsody(text: string, base: Prosody, enabled: boolean): P
   if (!enabled) return base
 
   let { rate, pitch, volume } = base
-  const closing = `["'”’）)\\]]*`
+  const closing = `["'”’）)\\]】」』》〉〕〗〙〛}]*`
   if (new RegExp(`(?:…|\\.{2,})${closing}$`, 'u').test(text)) {
     rate *= 0.92
     pitch -= 0.04

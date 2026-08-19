@@ -82,14 +82,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command === 'open-or-read') {
+    void chrome.runtime.sendMessage({ type: 'VOICE_PREVIEW_STOP' }).catch(() => undefined)
     const target = tab ?? undefined
     if (target)
       void sendToTab(target, { type: 'READ_CURRENT_SELECTION' }).catch(() => undefined)
     void openSidePanel(target).catch(() => undefined)
   }
 
-  if (command === 'stop-reading' && tab) {
-    void sendToTab(tab, { type: 'READER_STOP' }).catch(() => undefined)
+  if (command === 'stop-reading') {
+    void chrome.runtime.sendMessage({ type: 'VOICE_PREVIEW_STOP' }).catch(() => undefined)
+    if (tab) void sendToTab(tab, { type: 'READER_STOP' }).catch(() => undefined)
   }
 })
 

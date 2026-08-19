@@ -13,7 +13,10 @@ import {
   isReaderWindowActivation,
   useReaderConnection,
 } from '@/hooks/use-reader-connection'
-import type { TextReaderMessage } from '@/services/messaging/protocol'
+import {
+  isTextReaderMessage,
+  type TextReaderMessage,
+} from '@/services/messaging/protocol'
 import { sendToActiveTab } from '@/services/messaging/transport'
 import {
   createTranslator,
@@ -146,6 +149,7 @@ export function SidePanelApp() {
   const hasDocument = Boolean(readerDocument)
   const isPlaying = reader.status === 'playing'
   const isLoading = reader.status === 'loading'
+  const showFooterReaderActions = hasDocument || isLoading
   const readerError =
     reader.status === 'error' ? translateErrorCode(reader.errorCode, t) : ''
   const activeToast = toast || connectionError || readerError
@@ -162,9 +166,9 @@ export function SidePanelApp() {
     )[reader.status],
   )
 
-  const stopPreview = useCallback(() => {
+  const clearPreview = useCallback((cancel: boolean) => {
     previewGeneration.current += 1
-    const shouldCancel = Boolean(previewUtterance.current)
+    const shouldCancel = cancel && Boolean(previewUtterance.current)
     previewUtterance.current = undefined
     if (previewTimer.current !== undefined) {
       window.clearTimeout(previewTimer.current)
@@ -173,6 +177,8 @@ export function SidePanelApp() {
     if (shouldCancel) window.speechSynthesis.cancel()
     setPreviewPlaying(false)
   }, [])
+
+  const stopPreview = useCallback(() => clearPreview(true), [clearPreview])
 
   useEffect(() => {
     const updateTitle = () => {
@@ -227,6 +233,19 @@ export function SidePanelApp() {
     },
     [],
   )
+
+  useEffect(() => {
+    const handleMessage: Parameters<typeof chrome.runtime.onMessage.addListener>[0] = (
+      message,
+    ) => {
+      if (!isTextReaderMessage(message) || message.type !== 'VOICE_PREVIEW_STOP')
+        return false
+      stopPreview()
+      return false
+    }
+    chrome.runtime.onMessage.addListener(handleMessage)
+    return () => chrome.runtime.onMessage.removeListener(handleMessage)
+  }, [stopPreview])
 
   useEffect(() => {
     document.documentElement.dataset.theme = reader.settings.theme
@@ -325,11 +344,11 @@ export function SidePanelApp() {
     utterance.pitch = prosody.pitch
     utterance.volume = prosody.volume
     utterance.onend = () => {
-      if (previewUtterance.current === utterance) stopPreview()
+      if (previewUtterance.current === utterance) clearPreview(false)
     }
     utterance.onerror = (event) => {
       if (previewUtterance.current !== utterance) return
-      stopPreview()
+      clearPreview(false)
       if (event.error !== 'canceled' && event.error !== 'interrupted')
         setToast(t('ttsError'))
     }
@@ -423,47 +442,52 @@ export function SidePanelApp() {
               }
             />
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto px-5 py-8">
-              <span className="mb-3 grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--tr-soft)]">
-                <svg
-                  viewBox="0 0 24 24"
-                  className="size-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  aria-hidden="true"
-                >
-                  <path d="M5 4.5h9a3 3 0 0 1 3 3v12H8a3 3 0 0 0-3 3v-18Z" />
-                  <path d="M17 9.5 21 7v8l-4-2.5" fill="currentColor" stroke="none" />
-                </svg>
-              </span>
-              <h1 className="m-0 text-xl font-semibold tracking-[-0.03em]">
-                {t('listenTitle')}
-              </h1>
-              <p className="mb-5 mt-2 text-[13px] leading-5 text-[var(--tr-muted)]">
-                {t('listenDescription')}
-              </p>
-              <div className="grid shrink-0 grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={isLoading}
-                  className="h-10 rounded-xl bg-[var(--tr-accent)] text-[12px] font-semibold text-[var(--tr-accent-text)]"
-                  onClick={() =>
-                    void command({ type: 'READ_PAGE', payload: { mode: 'article' } })
-                  }
-                >
-                  {t('readArticle')}
-                </button>
-                <button
-                  type="button"
-                  disabled={isLoading}
-                  className="h-10 rounded-xl bg-[var(--tr-soft)] text-[12px] font-medium"
-                  onClick={() =>
-                    void command({ type: 'READ_PAGE', payload: { mode: 'page' } })
-                  }
-                >
-                  {t('readPage')}
-                </button>
+            <div
+              data-reader-empty
+              className="tr-reader-empty flex min-h-0 flex-1 overflow-y-auto px-5 py-8"
+            >
+              <div className="my-auto w-full shrink-0">
+                <span className="tr-reader-empty-icon mb-3 grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--tr-soft)]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="size-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    aria-hidden="true"
+                  >
+                    <path d="M5 4.5h9a3 3 0 0 1 3 3v12H8a3 3 0 0 0-3 3v-18Z" />
+                    <path d="M17 9.5 21 7v8l-4-2.5" fill="currentColor" stroke="none" />
+                  </svg>
+                </span>
+                <h1 className="m-0 text-xl font-semibold tracking-[-0.03em]">
+                  {t('listenTitle')}
+                </h1>
+                <p className="tr-reader-empty-description mb-5 mt-2 text-[13px] leading-5 text-[var(--tr-muted)]">
+                  {t('listenDescription')}
+                </p>
+                <div className="grid shrink-0 grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    className="h-10 rounded-xl bg-[var(--tr-accent)] text-[12px] font-semibold text-[var(--tr-accent-text)]"
+                    onClick={() =>
+                      void command({ type: 'READ_PAGE', payload: { mode: 'article' } })
+                    }
+                  >
+                    {t('readArticle')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    className="h-10 rounded-xl bg-[var(--tr-soft)] text-[12px] font-medium"
+                    onClick={() =>
+                      void command({ type: 'READ_PAGE', payload: { mode: 'page' } })
+                    }
+                  >
+                    {t('readPage')}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -636,33 +660,41 @@ export function SidePanelApp() {
         </div>
       )}
 
-      <footer className="mt-3 grid grid-cols-[1fr_1fr_auto_auto] gap-2">
-        <button
-          type="button"
-          disabled={isLoading}
-          className="h-10 rounded-xl bg-[var(--tr-accent)] px-2 text-[11px] font-semibold text-[var(--tr-accent-text)]"
-          onClick={() =>
-            void command({ type: 'READ_PAGE', payload: { mode: 'article' } })
-          }
-        >
-          {t('readArticle')}
-        </button>
-        <button
-          type="button"
-          disabled={isLoading}
-          className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-2 text-[11px] font-medium"
-          onClick={() => void command({ type: 'READ_PAGE', payload: { mode: 'page' } })}
-        >
-          {t('readPage')}
-        </button>
-        <button
-          type="button"
-          className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-3 text-[11px] font-medium disabled:opacity-40"
-          disabled={!hasDocument && !isLoading}
-          onClick={() => void command({ type: 'READER_STOP' })}
-        >
-          {t('stop')}
-        </button>
+      <footer
+        className={`mt-3 gap-2 ${showFooterReaderActions ? 'grid grid-cols-[1fr_1fr_auto_auto]' : 'flex justify-end'}`}
+      >
+        {showFooterReaderActions && (
+          <>
+            <button
+              type="button"
+              disabled={isLoading}
+              className="h-10 rounded-xl bg-[var(--tr-accent)] px-2 text-[11px] font-semibold text-[var(--tr-accent-text)]"
+              onClick={() =>
+                void command({ type: 'READ_PAGE', payload: { mode: 'article' } })
+              }
+            >
+              {t('readArticle')}
+            </button>
+            <button
+              type="button"
+              disabled={isLoading}
+              className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-2 text-[11px] font-medium"
+              onClick={() =>
+                void command({ type: 'READ_PAGE', payload: { mode: 'page' } })
+              }
+            >
+              {t('readPage')}
+            </button>
+            <button
+              type="button"
+              className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-3 text-[11px] font-medium disabled:opacity-40"
+              disabled={!hasDocument && !isLoading}
+              onClick={() => void command({ type: 'READER_STOP' })}
+            >
+              {t('stop')}
+            </button>
+          </>
+        )}
         <button
           type="button"
           className="grid size-10 place-items-center rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)]"

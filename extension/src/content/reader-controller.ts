@@ -68,14 +68,29 @@ export class ContentReaderController {
   private unsubscribeSettings: (() => void) | undefined
 
   async start(): Promise<void> {
+    let settingsVersion = 0
+    this.selectionManager.start()
+    this.unsubscribeSettings = settingsService.subscribe((nextSettings) => {
+      settingsVersion += 1
+      this.applySettings(nextSettings)
+    })
+    const initialSettingsVersion = settingsVersion
     const [settings, progress] = await Promise.all([
       settingsService.get().catch(() => DEFAULT_SETTINGS),
       readingProgressService.get(window.location.href).catch(() => undefined),
     ])
-    this.state = { ...this.state, settings }
-    this.floatingButton.setLanguage(settings.uiLanguage)
+    if (settingsVersion === initialSettingsVersion) {
+      this.state = { ...this.state, settings }
+      this.floatingButton.setLanguage(settings.uiLanguage)
+    }
     this.storedProgress = progress
-    if (progress && progress.progress > 0.01 && progress.progress < 0.98) {
+    if (
+      !this.document &&
+      this.state.status === 'idle' &&
+      progress &&
+      progress.progress > 0.01 &&
+      progress.progress < 0.98
+    ) {
       this.state = {
         ...this.state,
         source: progress.source,
@@ -86,10 +101,6 @@ export class ContentReaderController {
       }
     }
 
-    this.selectionManager.start()
-    this.unsubscribeSettings = settingsService.subscribe((nextSettings) => {
-      this.applySettings(nextSettings)
-    })
     chrome.runtime.onMessage.addListener(this.handleMessage)
     document.addEventListener('keydown', this.handleReaderKeyboard, true)
     this.broadcastState()

@@ -13,12 +13,22 @@ export function OptionsApp() {
   const t = useMemo(() => createTranslator(settings.uiLanguage), [settings.uiLanguage])
 
   useEffect(() => {
+    let settingsVersion = 0
+    const unsubscribe = settingsService.subscribe((nextSettings) => {
+      settingsVersion += 1
+      setSettings(nextSettings)
+    })
+    const initialSettingsVersion = settingsVersion
     void settingsService
       .get()
-      .then(setSettings)
-      .catch(() => setSaveState('error'))
-    const unsubscribe = settingsService.subscribe(setSettings)
+      .then((nextSettings) => {
+        if (settingsVersion === initialSettingsVersion) setSettings(nextSettings)
+      })
+      .catch(() => {
+        if (settingsVersion === initialSettingsVersion) setSaveState('error')
+      })
     return () => {
+      settingsVersion += 1
       unsubscribe()
       if (statusTimer.current !== undefined) window.clearTimeout(statusTimer.current)
     }

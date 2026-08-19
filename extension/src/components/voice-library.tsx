@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReaderSettings, SupportedLanguage, VoicePreset } from '@textreader/shared'
-import type { Translator } from '@/services/i18n/i18n'
+import { resolveUiLanguage, type Translator } from '@/services/i18n/i18n'
 import { normalizeSupportedLanguage } from '@/services/language/language'
 import {
   addRecentVoice,
@@ -94,12 +94,17 @@ export function VoiceLibrary({
   const selectedVoice = voices.find(
     (voice) => idOf(voice) === settings.voiceId || voice.name === settings.voiceId,
   )
-  const previewLanguage =
+  const preferredPreviewLanguage =
     settings.readingLanguage === 'auto'
-      ? (normalizeSupportedLanguage(selectedVoice?.lang) ?? 'en')
+      ? (normalizeSupportedLanguage(selectedVoice?.lang) ??
+        resolveUiLanguage(settings.uiLanguage))
       : settings.readingLanguage
   const previewVoice =
-    selectedVoice ?? selectVoiceForLanguage(voices, undefined, previewLanguage)
+    selectedVoice ?? selectVoiceForLanguage(voices, undefined, preferredPreviewLanguage)
+  const previewLanguage =
+    settings.readingLanguage === 'auto'
+      ? (normalizeSupportedLanguage(previewVoice?.lang) ?? preferredPreviewLanguage)
+      : settings.readingLanguage
   const normalizedQuery = query.trim().toLocaleLowerCase()
   const showSystemDefault =
     !favoritesOnly &&

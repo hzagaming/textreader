@@ -6,12 +6,21 @@ let listener: RuntimeMessageListener
 let connectListener: Parameters<typeof chrome.runtime.onConnect.addListener>[0]
 let disconnectListener: () => void
 let postMessage: ReturnType<typeof vi.fn>
+let commandListener: Parameters<typeof chrome.commands.onCommand.addListener>[0]
 
 beforeEach(() => {
   vi.resetModules()
   postMessage = vi.fn()
   vi.stubGlobal('chrome', {
-    commands: { onCommand: { addListener: vi.fn() } },
+    commands: {
+      onCommand: {
+        addListener: vi.fn(
+          (nextListener: Parameters<typeof chrome.commands.onCommand.addListener>[0]) => {
+            commandListener = nextListener
+          },
+        ),
+      },
+    },
     contextMenus: {
       create: vi.fn(),
       onClicked: { addListener: vi.fn() },
@@ -94,5 +103,31 @@ describe('background message relay', () => {
     )
 
     expect(postMessage).not.toHaveBeenCalled()
+  })
+
+  it('stops Side Panel voice previews with the global stop command', async () => {
+    await import('./service-worker')
+
+    commandListener('stop-reading', { id: 42 } as chrome.tabs.Tab)
+    await Promise.resolve()
+
+    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(42, {
+      type: 'READER_STOP',
+    })
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'VOICE_PREVIEW_STOP',
+    })
+  })
+
+  it('stops a Side Panel preview even when the command has no active tab', async () => {
+    await import('./service-worker')
+
+    commandListener('stop-reading')
+    await Promise.resolve()
+
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'VOICE_PREVIEW_STOP',
+    })
+    expect(chrome.tabs.sendMessage).not.toHaveBeenCalled()
   })
 })
