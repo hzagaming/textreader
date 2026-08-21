@@ -28,6 +28,7 @@ import {
 import { settingsService } from '@/services/settings/settings'
 import { naturalProsody } from '@/services/tts/natural-prosody'
 import { segmentText } from '@/services/tts/segment-text'
+import { voiceIdentity } from '@/services/tts/voice-catalog'
 import { useReaderStore } from '@/stores/reader-store'
 import { estimateSpeechSeconds, formatDuration } from '@/utils/time'
 import { primaryReaderCommand } from './side-panel-commands'
@@ -142,7 +143,7 @@ export function SidePanelApp() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [toast, setToast] = useState('')
   const [previewPlaying, setPreviewPlaying] = useState(false)
-  const [previewVoiceId, setPreviewVoiceId] = useState('')
+  const [previewVoiceKey, setPreviewVoiceKey] = useState('')
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false)
 
   const speechText = readerDocument?.plainText ?? reader.text
@@ -178,7 +179,7 @@ export function SidePanelApp() {
     }
     if (shouldCancel) window.speechSynthesis.cancel()
     setPreviewPlaying(false)
-    setPreviewVoiceId('')
+    setPreviewVoiceKey('')
   }, [])
 
   const stopPreview = useCallback(() => clearPreview(true), [clearPreview])
@@ -326,7 +327,7 @@ export function SidePanelApp() {
     stopPreview()
     const generation = previewGeneration.current
     setPreviewPlaying(true)
-    setPreviewVoiceId(voice.voiceURI || voice.name)
+    setPreviewVoiceKey(voiceIdentity(voice))
     void sendToActiveTab({ type: 'READER_STOP' }).catch(() => undefined)
     setToast('')
     const samples: Record<SupportedLanguage, string> = {
@@ -620,7 +621,7 @@ export function SidePanelApp() {
                 translator={t}
                 previewDisabled={isLoading}
                 previewPlaying={previewPlaying}
-                previewVoiceId={previewVoiceId}
+                previewVoiceKey={previewVoiceKey}
                 onUpdate={updateSettings}
                 onPreview={previewVoice}
                 onStopPreview={stopPreview}

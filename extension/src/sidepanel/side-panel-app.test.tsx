@@ -251,6 +251,27 @@ describe('SidePanel voice preview', () => {
     expect(mocks.updateSettings).not.toHaveBeenCalled()
   })
 
+  it('tracks a preview by voice and locale when voice IDs collide', async () => {
+    const duplicateLocaleVoice = {
+      ...voice,
+      lang: 'zh-CN',
+    } as SpeechSynthesisVoice
+    getVoices.mockReturnValue([voice, duplicateLocaleVoice])
+    await renderApp()
+
+    await act(async () => {
+      button('Preview voice: Local English (zh-CN)').click()
+      await Promise.resolve()
+    })
+
+    expect(
+      button('Preview voice: Local English (en-US)').getAttribute('aria-pressed'),
+    ).toBe('false')
+    expect(
+      button('Stop preview: Local English (zh-CN)').getAttribute('aria-pressed'),
+    ).toBe('true')
+  })
+
   it('previews the interface language when automatic voice selection is used', async () => {
     getVoices.mockReturnValue([voice, chineseVoice])
     useReaderStore

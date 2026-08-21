@@ -10,6 +10,9 @@ interface ChunkPart {
   sentenceIds: string[]
 }
 
+const SPLITTABLE_UNSPACED_TEXT =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Extended_Pictographic}\p{Regional_Indicator}\p{M}\u200d]/u
+
 function splitGraphemes(text: string, maximum: number): string[] {
   const graphemes =
     typeof Intl.Segmenter === 'function'
@@ -39,7 +42,7 @@ function splitLongText(text: string, maximum: number): string[] {
   for (const word of words) {
     if (word.length > maximum) {
       if (current) parts.push(current)
-      if (/\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}/u.test(word)) {
+      if (SPLITTABLE_UNSPACED_TEXT.test(word)) {
         parts.push(...splitGraphemes(word, maximum))
       } else {
         parts.push(word)

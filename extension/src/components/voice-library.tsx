@@ -6,6 +6,7 @@ import {
   addRecentVoice,
   filterVoices,
   selectVoiceForLanguage,
+  voiceIdentity,
   type VoiceFilterLanguage,
 } from '@/services/tts/voice-catalog'
 import {
@@ -26,7 +27,7 @@ interface VoiceLibraryProps {
   translator: Translator
   previewDisabled: boolean
   previewPlaying: boolean
-  previewVoiceId: string
+  previewVoiceKey: string
   onUpdate: (patch: SettingsPatch) => Promise<boolean>
   onPreview: (voice: SpeechSynthesisVoice, language: SupportedLanguage) => void
   onStopPreview: () => void
@@ -54,7 +55,7 @@ export function VoiceLibrary({
   translator: t,
   previewDisabled,
   previewPlaying,
-  previewVoiceId,
+  previewVoiceKey,
   onUpdate,
   onPreview,
   onStopPreview,
@@ -296,14 +297,15 @@ export function VoiceLibrary({
           )}
           {filteredVoices.map((voice) => {
             const id = idOf(voice)
+            const key = voiceIdentity(voice)
             const selected = id === settings.voiceId || voice.name === settings.voiceId
             const favorite = favorites.has(id)
             const voiceLabel = `${voice.name}${voice.lang ? ` (${voice.lang})` : ''}`
-            const previewLabel = `${t(previewPlaying && previewVoiceId === id ? 'stopPreview' : 'previewVoice')}: ${voiceLabel}`
+            const previewLabel = `${t(previewPlaying && previewVoiceKey === key ? 'stopPreview' : 'previewVoice')}: ${voiceLabel}`
             const favoriteLabel = `${t(favorite ? 'unfavoriteVoice' : 'favoriteVoice')}: ${voiceLabel}`
             return (
               <div
-                key={`${id}-${voice.lang}`}
+                key={key}
                 className={`grid grid-cols-[minmax(0,1fr)_36px_36px] items-center rounded-lg border ${selected ? 'border-[var(--tr-focus)] bg-[var(--tr-highlight)]' : 'border-transparent hover:bg-[var(--tr-soft)]'}`}
                 role="listitem"
               >
@@ -324,13 +326,13 @@ export function VoiceLibrary({
                 </button>
                 <button
                   type="button"
-                  disabled={previewDisabled && previewVoiceId !== id}
+                  disabled={previewDisabled && previewVoiceKey !== key}
                   className="grid size-9 place-items-center rounded-lg text-[12px] disabled:opacity-45"
                   aria-label={previewLabel}
-                  aria-pressed={previewPlaying && previewVoiceId === id}
+                  aria-pressed={previewPlaying && previewVoiceKey === key}
                   title={previewLabel}
                   onClick={() => {
-                    if (previewPlaying && previewVoiceId === id) onStopPreview()
+                    if (previewPlaying && previewVoiceKey === key) onStopPreview()
                     else
                       onPreview(
                         voice,
@@ -339,7 +341,7 @@ export function VoiceLibrary({
                   }}
                 >
                   <span aria-hidden="true">
-                    {previewPlaying && previewVoiceId === id ? '■' : '▶'}
+                    {previewPlaying && previewVoiceKey === key ? '■' : '▶'}
                   </span>
                 </button>
                 <button

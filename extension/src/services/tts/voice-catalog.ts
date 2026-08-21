@@ -20,6 +20,10 @@ function normalizeLocale(value: string | undefined): string {
   return (value ?? '').trim().replaceAll('_', '-').toLocaleLowerCase()
 }
 
+export function voiceIdentity(voice: SpeechSynthesisVoice): string {
+  return `${voiceId(voice)}\u0000${normalizeLocale(voice.lang)}`
+}
+
 function preferredVoice(
   voices: readonly SpeechSynthesisVoice[],
 ): SpeechSynthesisVoice | undefined {

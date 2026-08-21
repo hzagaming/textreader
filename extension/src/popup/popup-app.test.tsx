@@ -37,6 +37,7 @@ beforeEach(() => {
       query: vi.fn().mockResolvedValue([{ id: 1, title: 'Example' }]),
     },
   })
+  mocks.getSettings.mockResolvedValue(DEFAULT_SETTINGS)
   mocks.getActiveReaderState.mockResolvedValue({ ok: true })
   mocks.updateSettings.mockResolvedValue(DEFAULT_SETTINGS)
 })
@@ -70,5 +71,46 @@ describe('PopupApp', () => {
     })
 
     expect((selectionSwitch as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('keeps loaded settings when the active tab lookup fails', async () => {
+    vi.mocked(chrome.tabs.query).mockRejectedValue(new Error('tab lookup failed'))
+    mocks.getSettings.mockResolvedValue({
+      ...DEFAULT_SETTINGS,
+      autoShowSelectionButton: false,
+    })
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+
+    await act(async () => {
+      root?.render(<PopupApp />)
+      await Promise.resolve()
+    })
+
+    const selectionSwitch = document.querySelector('button[role="switch"]')
+    expect(selectionSwitch).toBeInstanceOf(HTMLButtonElement)
+    await vi.waitFor(() =>
+      expect((selectionSwitch as HTMLButtonElement).disabled).toBe(false),
+    )
+    expect(selectionSwitch?.getAttribute('aria-checked')).toBe('false')
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+      'Unable to load',
+    )
+  })
+
+  it('keeps the selection switch disabled when settings cannot be loaded', async () => {
+    mocks.getSettings.mockRejectedValue(new Error('storage failed'))
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+
+    await act(async () => {
+      root?.render(<PopupApp />)
+      await Promise.resolve()
+    })
+
+    const selectionSwitch = document.querySelector('button[role="switch"]')
+    expect(selectionSwitch).toBeInstanceOf(HTMLButtonElement)
+    await vi.waitFor(() =>
+      expect(document.querySelector('[role="alert"]')).not.toBeNull(),
+    )
+    expect((selectionSwitch as HTMLButtonElement).disabled).toBe(true)
   })
 })

@@ -6,8 +6,8 @@ This repository contains **Phase 1 and Phase 2**, plus the v0.3 multilingual sys
 
 ## Release announcements
 
-- Current: [TextReader 0.3.4](./ANNOUNCEMENT.md)
-- History: [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
+- Current: [TextReader 0.3.5](./ANNOUNCEMENT.md)
+- History: [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
 
 ## Features
 
@@ -20,7 +20,7 @@ This repository contains **Phase 1 and Phase 2**, plus the v0.3 multilingual sys
 - Chinese, English, Japanese, and Korean interfaces and extension metadata
 - Resilient multilingual sentence segmentation with protected URLs, email addresses, contextual abbreviations, decimals, paragraph boundaries, quotes, and grapheme-safe long clauses
 - Sentence queue with previous/next, paragraph navigation, restart, and direct jumps
-- 200–500-character, grapheme-safe speech chunk preparation for future remote TTS providers
+- 200–500-character, grapheme-safe speech chunk preparation for future remote TTS providers, including unspaced CJK, Hangul, and emoji text
 - Web Speech API playback with automatic per-language voice switching and voice, speed, pitch, volume, and optional sentence-aware Natural expression controls
 - Searchable voice library with language filters, favorites, recent voices, availability feedback, exact-locale fallback, and on-device/network-use labels
 - Interface-aware, per-sentence expressive previews for any listed voice without changing the saved selection, plus custom voice-setting presets

@@ -22,28 +22,45 @@ export function PopupApp() {
 
   useEffect(() => {
     let active = true
-    void Promise.all([
+    void Promise.allSettled([
       chrome.tabs.query({ active: true, currentWindow: true }),
       settingsService.get(),
       getActiveReaderState(),
-    ])
-      .then(([tabs, settings, response]) => {
-        if (!active) return
-        const nextTranslator = createTranslator(settings.uiLanguage)
-        setPageTitle(tabs[0]?.title || nextTranslator('currentPage'))
-        setTabId(tabs[0]?.id ?? null)
+    ]).then(([tabsResult, settingsResult, readerResult]) => {
+      if (!active) return
+      const settings =
+        settingsResult.status === 'fulfilled' ? settingsResult.value : undefined
+      const nextTranslator = createTranslator(settings?.uiLanguage ?? 'auto')
+
+      if (tabsResult.status === 'fulfilled') {
+        setPageTitle(tabsResult.value[0]?.title || nextTranslator('currentPage'))
+        setTabId(tabsResult.value[0]?.id ?? null)
+      } else {
+        setPageTitle(nextTranslator('currentPage'))
+      }
+
+      if (settings) {
         setSelectionEnabled(settings.autoShowSelectionButton)
         setUiLanguage(settings.uiLanguage)
-        if (response.ok && response.data) setStatus(response.data.status)
         document.documentElement.dataset.theme = settings.theme
         document.documentElement.lang = resolveUiLanguage(settings.uiLanguage)
-      })
-      .catch(() => {
-        if (active) setFeedback(createTranslator('auto')('unableToLoadSettings'))
-      })
-      .finally(() => {
-        if (active) setSettingsLoaded(true)
-      })
+        setSettingsLoaded(true)
+      }
+
+      if (
+        readerResult.status === 'fulfilled' &&
+        readerResult.value.ok &&
+        readerResult.value.data
+      ) {
+        setStatus(readerResult.value.data.status)
+      }
+
+      const loadFailed =
+        tabsResult.status === 'rejected' ||
+        settingsResult.status === 'rejected' ||
+        readerResult.status === 'rejected'
+      setFeedback(loadFailed ? nextTranslator('unableToLoadSettings') : '')
+    })
     return () => {
       active = false
     }

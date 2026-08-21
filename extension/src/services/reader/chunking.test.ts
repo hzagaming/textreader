@@ -62,4 +62,29 @@ describe('createSpeechChunks', () => {
     }
     expect(chunks.map((chunk) => chunk.text).join('')).toBe(token)
   })
+
+  it.each(['한'.repeat(30), '👨‍👩‍👧‍👦'.repeat(4)])(
+    'splits other unspaced text only at grapheme boundaries',
+    (token) => {
+      const chunks = createSpeechChunks([sentence(0, token)], {
+        minimum: 1,
+        maximum: 12,
+      })
+      const validBoundaries = new Set(
+        Array.from(
+          new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(token),
+          (part) => part.index,
+        ),
+      )
+      validBoundaries.add(token.length)
+      let boundary = 0
+
+      for (const chunk of chunks) {
+        boundary += chunk.text.length
+        expect(chunk.charCount).toBeLessThanOrEqual(12)
+        expect(validBoundaries.has(boundary)).toBe(true)
+      }
+      expect(chunks.map((chunk) => chunk.text).join('')).toBe(token)
+    },
+  )
 })
