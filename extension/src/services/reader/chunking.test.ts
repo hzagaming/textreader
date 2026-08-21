@@ -40,4 +40,26 @@ describe('createSpeechChunks', () => {
     expect(chunks).toHaveLength(1)
     expect(chunks[0]?.text).toBe(token)
   })
+
+  it('splits long CJK tokens only at grapheme boundaries', () => {
+    const token = `${'汉'.repeat(10)}👨‍👩‍👧‍👦${'字'.repeat(10)}`
+    const chunks = createSpeechChunks([sentence(0, token)], {
+      minimum: 1,
+      maximum: 12,
+    })
+    const validBoundaries = new Set(
+      Array.from(
+        new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(token),
+        (part) => part.index,
+      ),
+    )
+    validBoundaries.add(token.length)
+    let boundary = 0
+
+    for (const chunk of chunks) {
+      boundary += chunk.text.length
+      expect(validBoundaries.has(boundary)).toBe(true)
+    }
+    expect(chunks.map((chunk) => chunk.text).join('')).toBe(token)
+  })
 })

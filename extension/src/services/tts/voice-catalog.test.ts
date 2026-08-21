@@ -33,6 +33,21 @@ describe('voice catalog', () => {
     expect(selectVoiceForLanguage(voices, 'missing', 'ja')).toBe(voices[2])
   })
 
+  it('prefers an exact locale before a broader language default', () => {
+    const britishDefault = voice('British Default', 'en-GB', {
+      default: true,
+      localService: false,
+    })
+    const americanLocal = voice('American Local', 'en_US')
+
+    expect(
+      selectVoiceForLanguage([britishDefault, americanLocal], undefined, 'en', 'en-US'),
+    ).toBe(americanLocal)
+    expect(
+      selectVoiceForLanguage([britishDefault, americanLocal], undefined, 'en', 'en-AU'),
+    ).toBe(britishDefault)
+  })
+
   it('keeps recent voices unique, newest first, and bounded', () => {
     const existing = Array.from({ length: 20 }, (_, index) => `voice-${index}`)
     expect(addRecentVoice(existing, 'voice-4')).toEqual([

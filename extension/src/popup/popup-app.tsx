@@ -17,15 +17,18 @@ export function PopupApp() {
   const [status, setStatus] = useState<ReaderStatus>('idle')
   const [selectionEnabled, setSelectionEnabled] = useState(true)
   const [selectionSaving, setSelectionSaving] = useState(false)
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
   const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
+    let active = true
     void Promise.all([
       chrome.tabs.query({ active: true, currentWindow: true }),
       settingsService.get(),
       getActiveReaderState(),
     ])
       .then(([tabs, settings, response]) => {
+        if (!active) return
         const nextTranslator = createTranslator(settings.uiLanguage)
         setPageTitle(tabs[0]?.title || nextTranslator('currentPage'))
         setTabId(tabs[0]?.id ?? null)
@@ -35,11 +38,19 @@ export function PopupApp() {
         document.documentElement.dataset.theme = settings.theme
         document.documentElement.lang = resolveUiLanguage(settings.uiLanguage)
       })
-      .catch(() => setFeedback(createTranslator('auto')('unableToLoadSettings')))
+      .catch(() => {
+        if (active) setFeedback(createTranslator('auto')('unableToLoadSettings'))
+      })
+      .finally(() => {
+        if (active) setSettingsLoaded(true)
+      })
+    return () => {
+      active = false
+    }
   }, [])
 
   const toggleSelection = async () => {
-    if (selectionSaving) return
+    if (!settingsLoaded || selectionSaving) return
     setSelectionSaving(true)
     try {
       const settings = await settingsService.update({
@@ -101,7 +112,7 @@ export function PopupApp() {
           <button
             type="button"
             role="switch"
-            disabled={selectionSaving}
+            disabled={!settingsLoaded || selectionSaving}
             aria-checked={selectionEnabled}
             aria-label={t('toggleSelectionReading')}
             className={`relative h-6 w-10 rounded-full transition ${selectionEnabled ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}

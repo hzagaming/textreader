@@ -27,6 +27,7 @@ import {
 } from '@/services/i18n/i18n'
 import { settingsService } from '@/services/settings/settings'
 import { naturalProsody } from '@/services/tts/natural-prosody'
+import { segmentText } from '@/services/tts/segment-text'
 import { useReaderStore } from '@/stores/reader-store'
 import { estimateSpeechSeconds, formatDuration } from '@/utils/time'
 import { primaryReaderCommand } from './side-panel-commands'
@@ -141,6 +142,7 @@ export function SidePanelApp() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [toast, setToast] = useState('')
   const [previewPlaying, setPreviewPlaying] = useState(false)
+  const [previewVoiceId, setPreviewVoiceId] = useState('')
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false)
 
   const speechText = readerDocument?.plainText ?? reader.text
@@ -176,6 +178,7 @@ export function SidePanelApp() {
     }
     if (shouldCancel) window.speechSynthesis.cancel()
     setPreviewPlaying(false)
+    setPreviewVoiceId('')
   }, [])
 
   const stopPreview = useCallback(() => clearPreview(true), [clearPreview])
@@ -260,6 +263,17 @@ export function SidePanelApp() {
 
   useEffect(() => {
     const handleKeyboard = (event: KeyboardEvent) => {
+      if (voiceSettingsOpen) {
+        if (
+          previewPlaying &&
+          event.code === 'Space' &&
+          !shouldIgnoreReaderKeyboardTarget(event.target)
+        ) {
+          event.preventDefault()
+          stopPreview()
+        }
+        return
+      }
       if (!readerDocument || isLoading || shouldIgnoreReaderKeyboardTarget(event.target))
         return
       let message: TextReaderMessage | undefined
@@ -280,7 +294,7 @@ export function SidePanelApp() {
     }
     document.addEventListener('keydown', handleKeyboard)
     return () => document.removeEventListener('keydown', handleKeyboard)
-  }, [isLoading, reader, readerDocument, stopPreview])
+  }, [isLoading, previewPlaying, reader, readerDocument, stopPreview, voiceSettingsOpen])
 
   const command = async (message: TextReaderMessage) => {
     stopPreview()
@@ -308,19 +322,12 @@ export function SidePanelApp() {
     }
   }
 
-  const previewVoice = async (
-    voice: SpeechSynthesisVoice,
-    language: SupportedLanguage,
-  ) => {
+  const previewVoice = (voice: SpeechSynthesisVoice, language: SupportedLanguage) => {
     stopPreview()
     const generation = previewGeneration.current
     setPreviewPlaying(true)
-    try {
-      await sendToActiveTab({ type: 'READER_STOP' })
-    } catch {
-      // Preview remains available on pages that cannot run the content script.
-    }
-    if (generation !== previewGeneration.current) return
+    setPreviewVoiceId(voice.voiceURI || voice.name)
+    void sendToActiveTab({ type: 'READER_STOP' }).catch(() => undefined)
     setToast('')
     const samples: Record<SupportedLanguage, string> = {
       en: 'Hi, this is TextReader. Ready to listen to this page together?',
@@ -328,48 +335,65 @@ export function SidePanelApp() {
       ja: 'こんにちは、TextReaderです。このページを一緒に聴いてみませんか？',
       ko: '안녕하세요, TextReader입니다. 이 페이지를 함께 들어 볼까요?',
     }
-    const utterance = new SpeechSynthesisUtterance(samples[language])
-    utterance.voice = voice
-    utterance.lang = voice.lang || language
-    const prosody = naturalProsody(
-      samples[language],
-      {
-        rate: reader.settings.speed,
-        pitch: 1 + reader.settings.pitch / 50,
-        volume: reader.settings.volume,
-      },
-      reader.settings.naturalExpression,
-    )
-    utterance.rate = prosody.rate
-    utterance.pitch = prosody.pitch
-    utterance.volume = prosody.volume
-    utterance.onend = () => {
-      if (previewUtterance.current === utterance) clearPreview(false)
-    }
-    utterance.onerror = (event) => {
-      if (previewUtterance.current !== utterance) return
-      clearPreview(false)
-      if (event.error !== 'canceled' && event.error !== 'interrupted')
-        setToast(t('ttsError'))
-    }
-    utterance.onstart = () => {
-      if (previewUtterance.current !== utterance || previewTimer.current === undefined)
+    const sentences = segmentText(samples[language], voice.lang || language)
+    const speakSentence = (index: number) => {
+      if (generation !== previewGeneration.current) return
+      const text = sentences[index]
+      if (!text) {
+        clearPreview(false)
         return
-      window.clearTimeout(previewTimer.current)
-      previewTimer.current = undefined
+      }
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.voice = voice
+      utterance.lang = voice.lang || language
+      const prosody = naturalProsody(
+        text,
+        {
+          rate: reader.settings.speed,
+          pitch: 1 + reader.settings.pitch / 50,
+          volume: reader.settings.volume,
+        },
+        reader.settings.naturalExpression,
+      )
+      utterance.rate = prosody.rate
+      utterance.pitch = prosody.pitch
+      utterance.volume = prosody.volume
+      utterance.onend = () => {
+        if (previewUtterance.current !== utterance) return
+        if (previewTimer.current !== undefined) {
+          window.clearTimeout(previewTimer.current)
+          previewTimer.current = undefined
+        }
+        previewUtterance.current = undefined
+        if (index < sentences.length - 1) speakSentence(index + 1)
+        else clearPreview(false)
+      }
+      utterance.onerror = (event) => {
+        if (previewUtterance.current !== utterance) return
+        clearPreview(false)
+        if (event.error !== 'canceled' && event.error !== 'interrupted')
+          setToast(t('ttsError'))
+      }
+      utterance.onstart = () => {
+        if (previewUtterance.current !== utterance || previewTimer.current === undefined)
+          return
+        window.clearTimeout(previewTimer.current)
+        previewTimer.current = undefined
+      }
+      previewUtterance.current = utterance
+      previewTimer.current = window.setTimeout(() => {
+        if (previewUtterance.current !== utterance) return
+        stopPreview()
+        setToast(t('ttsError'))
+      }, 10_000)
+      try {
+        window.speechSynthesis.speak(utterance)
+      } catch {
+        stopPreview()
+        setToast(t('ttsError'))
+      }
     }
-    previewUtterance.current = utterance
-    previewTimer.current = window.setTimeout(() => {
-      if (previewUtterance.current !== utterance) return
-      stopPreview()
-      setToast(t('ttsError'))
-    }, 10_000)
-    try {
-      window.speechSynthesis.speak(utterance)
-    } catch {
-      stopPreview()
-      setToast(t('ttsError'))
-    }
+    speakSentence(0)
   }
 
   const handlePrimary = async () => {
@@ -377,6 +401,7 @@ export function SidePanelApp() {
   }
 
   const openSettings = async () => {
+    stopPreview()
     try {
       await chrome.runtime.openOptionsPage()
       setToast('')
@@ -574,7 +599,10 @@ export function SidePanelApp() {
             className="flex w-full shrink-0 items-center gap-1.5 text-left text-[12px] font-semibold"
             aria-expanded={voiceSettingsOpen}
             aria-label={t('voiceSettings')}
-            onClick={() => setVoiceSettingsOpen((open) => !open)}
+            onClick={() => {
+              if (voiceSettingsOpen) stopPreview()
+              setVoiceSettingsOpen((open) => !open)
+            }}
           >
             <span
               className={`text-[10px] transition-transform ${voiceSettingsOpen ? 'rotate-90' : ''}`}
@@ -592,8 +620,9 @@ export function SidePanelApp() {
                 translator={t}
                 previewDisabled={isLoading}
                 previewPlaying={previewPlaying}
+                previewVoiceId={previewVoiceId}
                 onUpdate={updateSettings}
-                onPreview={(voice, language) => void previewVoice(voice, language)}
+                onPreview={previewVoice}
                 onStopPreview={stopPreview}
               />
               <label className="block">

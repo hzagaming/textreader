@@ -26,6 +26,7 @@ interface VoiceLibraryProps {
   translator: Translator
   previewDisabled: boolean
   previewPlaying: boolean
+  previewVoiceId: string
   onUpdate: (patch: SettingsPatch) => Promise<boolean>
   onPreview: (voice: SpeechSynthesisVoice, language: SupportedLanguage) => void
   onStopPreview: () => void
@@ -53,6 +54,7 @@ export function VoiceLibrary({
   translator: t,
   previewDisabled,
   previewPlaying,
+  previewVoiceId,
   onUpdate,
   onPreview,
   onStopPreview,
@@ -100,7 +102,15 @@ export function VoiceLibrary({
         resolveUiLanguage(settings.uiLanguage))
       : settings.readingLanguage
   const previewVoice =
-    selectedVoice ?? selectVoiceForLanguage(voices, undefined, preferredPreviewLanguage)
+    selectedVoice ??
+    selectVoiceForLanguage(
+      voices,
+      undefined,
+      preferredPreviewLanguage,
+      normalizeSupportedLanguage(navigator.language) === preferredPreviewLanguage
+        ? navigator.language
+        : undefined,
+    )
   const previewLanguage =
     settings.readingLanguage === 'auto'
       ? (normalizeSupportedLanguage(previewVoice?.lang) ?? preferredPreviewLanguage)
@@ -288,10 +298,13 @@ export function VoiceLibrary({
             const id = idOf(voice)
             const selected = id === settings.voiceId || voice.name === settings.voiceId
             const favorite = favorites.has(id)
+            const voiceLabel = `${voice.name}${voice.lang ? ` (${voice.lang})` : ''}`
+            const previewLabel = `${t(previewPlaying && previewVoiceId === id ? 'stopPreview' : 'previewVoice')}: ${voiceLabel}`
+            const favoriteLabel = `${t(favorite ? 'unfavoriteVoice' : 'favoriteVoice')}: ${voiceLabel}`
             return (
               <div
                 key={`${id}-${voice.lang}`}
-                className={`grid grid-cols-[minmax(0,1fr)_38px] items-center rounded-lg border ${selected ? 'border-[var(--tr-focus)] bg-[var(--tr-highlight)]' : 'border-transparent hover:bg-[var(--tr-soft)]'}`}
+                className={`grid grid-cols-[minmax(0,1fr)_36px_36px] items-center rounded-lg border ${selected ? 'border-[var(--tr-focus)] bg-[var(--tr-highlight)]' : 'border-transparent hover:bg-[var(--tr-soft)]'}`}
                 role="listitem"
               >
                 <button
@@ -311,9 +324,30 @@ export function VoiceLibrary({
                 </button>
                 <button
                   type="button"
+                  disabled={previewDisabled && previewVoiceId !== id}
+                  className="grid size-9 place-items-center rounded-lg text-[12px] disabled:opacity-45"
+                  aria-label={previewLabel}
+                  aria-pressed={previewPlaying && previewVoiceId === id}
+                  title={previewLabel}
+                  onClick={() => {
+                    if (previewPlaying && previewVoiceId === id) onStopPreview()
+                    else
+                      onPreview(
+                        voice,
+                        normalizeSupportedLanguage(voice.lang) ?? previewLanguage,
+                      )
+                  }}
+                >
+                  <span aria-hidden="true">
+                    {previewPlaying && previewVoiceId === id ? '■' : '▶'}
+                  </span>
+                </button>
+                <button
+                  type="button"
                   className="grid size-9 place-items-center rounded-lg text-[15px]"
-                  aria-label={favorite ? t('unfavoriteVoice') : t('favoriteVoice')}
+                  aria-label={favoriteLabel}
                   aria-pressed={favorite}
+                  title={favoriteLabel}
                   onClick={() =>
                     void onUpdate({
                       favoriteVoiceIds: toggleFavoriteVoice(

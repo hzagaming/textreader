@@ -1,25 +1,25 @@
-# TextReader 0.3.3
+# TextReader 0.3.4
 
-Released on August 19, 2026.
+Released on August 21, 2026.
 
-TextReader 0.3.3 is a focused reliability and polish release for natural local speech, intelligent sentence boundaries, instant selection reading, and compact layouts.
+TextReader 0.3.4 is a voice-selection, accessibility, and cross-browser reliability release backed by a full extension audit.
 
 ## Highlights
 
-- Corrected contextual abbreviation handling so sentence-final `etc.` and `No.` no longer swallow the next sentence, while inline abbreviations such as `etc. remains` and `No. 2` stay intact.
-- Preserved explicit line breaks as speech boundaries and made long-text splitting grapheme-safe, preventing combining marks and emoji ZWJ sequences from being cut apart.
-- Extended Natural expression detection to Japanese and Chinese closing marks, and made automatic system-voice previews prefer the current interface language when a matching voice is installed.
-- Started selection monitoring before asynchronous settings and progress reads finish, while protecting newer settings from stale startup responses. Escape now clears the cached selection as well as dismissing its control.
-- Stopped Side Panel previews from both global reading shortcuts, and removed redundant `speechSynthesis.cancel()` calls after previews finish or fail naturally.
-- Fixed the Options page's stale settings initialization and stale load-error races.
-- Removed duplicated empty-reader actions and refined the 280 × 400 layout so short panels keep the explanation and primary actions fully visible, including when an error notice is present.
+- Added direct preview controls to every system voice without changing the saved selection, with exact voice-and-locale labels for preview and favorite actions.
+- Made automatic voice selection prefer the requested locale, such as `en-US` or `zh-CN`, before falling back to another voice in the same base language.
+- Changed previews to use the same per-sentence segmentation and Natural expression rules as article playback, and removed the active-page response wait from preview startup.
+- Hardened preview cleanup when stopping, switching voices, closing voice settings, opening Options, using global commands, or reaching natural completion.
+- Prevented Side Panel reader shortcuts from taking over the voice-settings workspace; while a preview is active, Space stops only that preview.
+- Disabled the Popup selection switch until its stored value is loaded, avoiding an early-interaction race, and routed shortcut management to the native `chrome://` or `edge://` page.
+- Kept future remote-TTS chunks on grapheme boundaries so emoji and joined characters are not split, and corrected Korean speech-duration estimates.
 
-Natural expression remains a subtle adjustment of standardized Web Speech rate, pitch, and volume. Its audible result depends on the installed browser/OS voice; this release does not add neural emotion, voice cloning, a remote TTS provider, SFX, BGM, tracking, credentials, or third-party secrets.
+Natural expression remains a subtle adjustment of standardized Web Speech rate, pitch, and volume. Its audible result depends on the installed browser/OS voice. This release does not add neural emotion, voice cloning, a remote TTS provider, SFX, BGM, tracking, credentials, or third-party secrets.
 
 ## Verification
 
-- 29 automated test files with 122 passing tests covering TTS expression, contextual and grapheme-safe segmentation, early selection startup, settings races, preview lifecycle, shortcuts, and compact UI states
-- ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, diff validation, and sensitive-data checks
-- Real Chromium checks across Chinese, English, Japanese, and Korean interfaces, light/dark themes, 280 × 400 Side Panel error and settings states, Popup and Options overflow, accessible button names, settings reachability, console errors, and a measured 5 ms selected-text button path
+- 32 automated test files with 133 passing tests covering direct voice preview, locale fallback, preview lifecycle, settings keyboard isolation, Popup initialization, Chrome/Edge shortcut routing, grapheme-safe chunking, and Korean duration estimates
+- ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, diff validation, version consistency, and sensitive-data checks
+- Isolated Chromium checks across Chinese, English, Japanese, and Korean interfaces, light/dark themes, 280 × 400 and 400 × 700 Side Panels, Popup and narrow Options layouts, direct-preview storage isolation, keyboard behavior, console errors, and selected-text control latency
 
-Previous announcement: [TextReader 0.3.2](./docs/announcements/history/0.3.2.md).
+Previous announcement: [TextReader 0.3.3](./docs/announcements/history/0.3.3.md).

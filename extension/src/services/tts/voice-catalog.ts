@@ -16,6 +16,20 @@ function voiceId(voice: SpeechSynthesisVoice): string {
   return voice.voiceURI || voice.name
 }
 
+function normalizeLocale(value: string | undefined): string {
+  return (value ?? '').trim().replaceAll('_', '-').toLocaleLowerCase()
+}
+
+function preferredVoice(
+  voices: readonly SpeechSynthesisVoice[],
+): SpeechSynthesisVoice | undefined {
+  return (
+    voices.find((voice) => voice.default) ??
+    voices.find((voice) => voice.localService) ??
+    voices[0]
+  )
+}
+
 export function filterVoices(
   voices: readonly SpeechSynthesisVoice[],
   filter: VoiceFilter,
@@ -38,6 +52,7 @@ export function selectVoiceForLanguage(
   voices: readonly SpeechSynthesisVoice[],
   preferredVoiceId: string | undefined,
   language: SupportedLanguage,
+  preferredLocale?: string,
 ): SpeechSynthesisVoice | undefined {
   const preferred = preferredVoiceId
     ? voices.find(
@@ -49,10 +64,13 @@ export function selectVoiceForLanguage(
   )
   if (preferred && normalizeSupportedLanguage(preferred.lang) === language)
     return preferred
+  const locale = normalizeLocale(preferredLocale)
+  const exactLocale = locale
+    ? matching.filter((voice) => normalizeLocale(voice.lang) === locale)
+    : []
   return (
-    matching.find((voice) => voice.default) ??
-    matching.find((voice) => voice.localService) ??
-    matching[0] ??
+    preferredVoice(exactLocale) ??
+    preferredVoice(matching) ??
     preferred ??
     voices.find((voice) => voice.default) ??
     voices[0]

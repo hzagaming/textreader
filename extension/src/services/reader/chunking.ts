@@ -10,6 +10,27 @@ interface ChunkPart {
   sentenceIds: string[]
 }
 
+function splitGraphemes(text: string, maximum: number): string[] {
+  const graphemes =
+    typeof Intl.Segmenter === 'function'
+      ? Array.from(
+          new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text),
+          ({ segment }) => segment,
+        )
+      : Array.from(text)
+  const parts: string[] = []
+  let current = ''
+  for (const grapheme of graphemes) {
+    if (current && current.length + grapheme.length > maximum) {
+      parts.push(current)
+      current = ''
+    }
+    current += grapheme
+  }
+  if (current) parts.push(current)
+  return parts
+}
+
 function splitLongText(text: string, maximum: number): string[] {
   const words = text.split(/\s+/u)
   const parts: string[] = []
@@ -19,9 +40,7 @@ function splitLongText(text: string, maximum: number): string[] {
     if (word.length > maximum) {
       if (current) parts.push(current)
       if (/\p{Script=Han}|\p{Script=Hiragana}|\p{Script=Katakana}/u.test(word)) {
-        for (let index = 0; index < word.length; index += maximum) {
-          parts.push(word.slice(index, index + maximum))
-        }
+        parts.push(...splitGraphemes(word, maximum))
       } else {
         parts.push(word)
       }

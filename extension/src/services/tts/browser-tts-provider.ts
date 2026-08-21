@@ -147,6 +147,9 @@ export class BrowserTTSProvider implements TTSController {
         voices,
         request.voiceByLanguage?.[language] || request.voiceId,
         language,
+        normalizeSupportedLanguage(request.language) === language
+          ? request.language
+          : undefined,
       )
     if (voice) utterance.voice = voice
     utterance.lang =

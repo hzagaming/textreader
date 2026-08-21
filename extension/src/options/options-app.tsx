@@ -3,6 +3,7 @@ import type { ReaderSettings, ThemePreference } from '@textreader/shared'
 import { Logo } from '@/components/logo'
 import { createTranslator, resolveUiLanguage } from '@/services/i18n/i18n'
 import { DEFAULT_SETTINGS, settingsService } from '@/services/settings/settings'
+import { shortcutSettingsUrl } from './shortcut-settings'
 
 export function OptionsApp() {
   const [settings, setSettings] = useState<ReaderSettings>(DEFAULT_SETTINGS)
@@ -54,7 +55,7 @@ export function OptionsApp() {
 
   const openShortcutSettings = async () => {
     try {
-      await chrome.tabs.create({ url: 'chrome://extensions/shortcuts' })
+      await chrome.tabs.create({ url: shortcutSettingsUrl() })
       setShortcutError(false)
     } catch {
       setShortcutError(true)

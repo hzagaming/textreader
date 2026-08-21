@@ -213,8 +213,42 @@ describe('SidePanel voice preview', () => {
       await Promise.resolve()
     })
 
-    const utterance = speak.mock.calls[0]?.[0] as FakeUtterance | undefined
-    expect(utterance).toMatchObject({ rate: 0.97, pitch: 1.08 })
+    const introduction = speak.mock.calls[0]?.[0] as FakeUtterance | undefined
+    expect(introduction).toMatchObject({
+      text: 'Hi, this is TextReader.',
+      rate: 1,
+      pitch: 1,
+    })
+
+    act(() => {
+      introduction?.onend?.call(
+        introduction as unknown as SpeechSynthesisUtterance,
+        {} as SpeechSynthesisEvent,
+      )
+    })
+
+    expect(speak.mock.calls[1]?.[0]).toMatchObject({
+      text: 'Ready to listen to this page together?',
+      rate: 0.97,
+      pitch: 1.08,
+    })
+  })
+
+  it('previews a listed voice without changing the saved selection', async () => {
+    getVoices.mockReturnValue([voice, chineseVoice])
+    await renderApp()
+
+    await act(async () => {
+      button('Preview voice: Local Chinese (zh-CN)').click()
+      await Promise.resolve()
+    })
+
+    expect(speak.mock.calls[0]?.[0]).toMatchObject({
+      text: '你好，我是 TextReader。',
+      voice: chineseVoice,
+      lang: 'zh-CN',
+    })
+    expect(mocks.updateSettings).not.toHaveBeenCalled()
   })
 
   it('previews the interface language when automatic voice selection is used', async () => {
@@ -232,13 +266,13 @@ describe('SidePanel voice preview', () => {
     })
 
     expect(speak.mock.calls[0]?.[0]).toMatchObject({
-      text: '你好，我是 TextReader。准备好一起聆听这个页面了吗？',
+      text: '你好，我是 TextReader。',
       voice: chineseVoice,
       lang: 'zh-CN',
     })
   })
 
-  it('can cancel a preview while the reader stop request is still pending', async () => {
+  it('starts and can cancel a preview while the reader stop request is still pending', async () => {
     let resolveStop: ((response: MessageResponse) => void) | undefined
     mocks.sendToActiveTab.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -251,6 +285,7 @@ describe('SidePanel voice preview', () => {
       button('Preview voice').click()
       await Promise.resolve()
     })
+    expect(speak).toHaveBeenCalledOnce()
     expect(button('Stop preview').getAttribute('aria-pressed')).toBe('true')
     act(() => button('Stop preview').click())
     await act(async () => {
@@ -258,7 +293,7 @@ describe('SidePanel voice preview', () => {
       await Promise.resolve()
     })
 
-    expect(speak).not.toHaveBeenCalled()
+    expect(cancel).toHaveBeenCalledOnce()
     expect(button('Preview voice').getAttribute('aria-pressed')).toBe('false')
   })
 
@@ -299,17 +334,76 @@ describe('SidePanel voice preview', () => {
     expect(button('Preview voice').getAttribute('aria-pressed')).toBe('false')
   })
 
+  it('stops an active preview when voice settings are closed', async () => {
+    await renderApp()
+    await act(async () => {
+      button('Preview voice').click()
+      await Promise.resolve()
+    })
+
+    act(() => button('Voice & reading settings').click())
+
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('does not capture reader shortcuts while voice settings are open', async () => {
+    await renderApp(true)
+    mocks.sendToActiveTab.mockClear()
+
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: ' ',
+          code: 'Space',
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
+    })
+
+    expect(mocks.sendToActiveTab).not.toHaveBeenCalled()
+  })
+
+  it('stops an active preview before opening the Options page', async () => {
+    await renderApp()
+    await act(async () => {
+      button('Preview voice').click()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      button('Settings').click()
+      await Promise.resolve()
+    })
+
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('names favorite actions for the exact voice and locale', async () => {
+    getVoices.mockReturnValue([voice, chineseVoice])
+    await renderApp()
+
+    expect(button('Favorite voice: Local Chinese (zh-CN)').disabled).toBe(false)
+  })
+
   it('does not cancel the speech engine after a preview finishes naturally', async () => {
     await renderApp()
     await act(async () => {
       button('Preview voice').click()
       await Promise.resolve()
     })
-    const utterance = speak.mock.calls[0]?.[0] as FakeUtterance | undefined
+    const introduction = speak.mock.calls[0]?.[0] as FakeUtterance | undefined
 
     act(() => {
-      utterance?.onend?.call(
-        utterance as unknown as SpeechSynthesisUtterance,
+      introduction?.onend?.call(
+        introduction as unknown as SpeechSynthesisUtterance,
+        {} as SpeechSynthesisEvent,
+      )
+    })
+    const question = speak.mock.calls[1]?.[0] as FakeUtterance | undefined
+    act(() => {
+      question?.onend?.call(
+        question as unknown as SpeechSynthesisUtterance,
         {} as SpeechSynthesisEvent,
       )
     })
