@@ -64,6 +64,7 @@ let speak: ReturnType<typeof vi.fn>
 let cancel: ReturnType<typeof vi.fn>
 let getVoices: ReturnType<typeof vi.fn>
 let runtimeMessageListener: Parameters<typeof chrome.runtime.onMessage.addListener>[0]
+let tabActivatedListener: Parameters<typeof chrome.tabs.onActivated.addListener>[0]
 
 function button(label: string): HTMLButtonElement {
   const match = [...document.querySelectorAll('button')].find(
@@ -128,7 +129,14 @@ beforeEach(() => {
     },
     tabs: {
       query: vi.fn().mockResolvedValue([{ id: 1, windowId: 1, title: 'Example' }]),
-      onActivated: { addListener: vi.fn(), removeListener: vi.fn() },
+      onActivated: {
+        addListener: vi.fn(
+          (listener: Parameters<typeof chrome.tabs.onActivated.addListener>[0]) => {
+            tabActivatedListener = listener
+          },
+        ),
+        removeListener: vi.fn(),
+      },
       onUpdated: { addListener: vi.fn(), removeListener: vi.fn() },
     },
   })
@@ -147,6 +155,41 @@ afterEach(() => {
 })
 
 describe('SidePanel voice preview', () => {
+  it('ignores a stale page-title lookup after a newer tab activation', async () => {
+    await renderApp(false, false)
+    let resolveOld:
+      ((tabs: Array<{ id: number; windowId: number; title: string }>) => void) | undefined
+    let resolveNew:
+      ((tabs: Array<{ id: number; windowId: number; title: string }>) => void) | undefined
+    const query = chrome.tabs.query as unknown as ReturnType<typeof vi.fn>
+    query
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveOld = resolve
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveNew = resolve
+        }),
+      )
+
+    act(() => {
+      tabActivatedListener({ tabId: 2, windowId: 1 })
+      tabActivatedListener({ tabId: 3, windowId: 1 })
+    })
+    await act(async () => {
+      resolveNew?.([{ id: 3, windowId: 1, title: 'Newest page' }])
+      await Promise.resolve()
+    })
+    await act(async () => {
+      resolveOld?.([{ id: 2, windowId: 1, title: 'Stale page' }])
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('header > span')?.textContent).toBe('Newest page')
+  })
+
   it('shows one primary action set when no document is loaded', async () => {
     await renderApp(false, false)
 

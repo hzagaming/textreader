@@ -1,22 +1,24 @@
-# TextReader 0.3.5
+# TextReader 1.1.0
 
-Released on August 22, 2026.
+Released on August 23, 2026.
 
-TextReader 0.3.5 is a focused reliability follow-up for Popup initialization, locale-specific voice previews, and grapheme-safe future TTS streaming.
+TextReader 1.1.0 is a UI, interaction, and audio-lifecycle reliability release backed by a fresh production-extension audit.
 
 ## Highlights
 
-- Made Popup initialization settle tab, settings, and reader-state requests independently. A failed tab lookup no longer discards a successfully loaded selection preference, and a settings failure keeps the switch safely disabled.
-- Made direct-preview playback state unique to both the system voice ID and locale, so same-ID voices for different locales no longer display multiple active stop controls.
-- Extended grapheme-safe future remote-TTS chunking to unspaced Hangul, emoji, regional indicators, combining marks, and joined sequences while preserving indivisible Latin words.
-- Rechecked Side Panel, Popup, Options, selection controls, browser TTS lifecycle, accessibility names, responsive layouts, themes, localization, audio paths, and production bundles.
+- Reworked speed, pitch, and volume sliders to update visually during a drag while persisting only once when the interaction finishes. This removes queued storage writes and value rollback during rapid adjustments; failed saves now restore the actual persisted value.
+- Made the Popup surface content-connection failures directly instead of presenting restricted pages as ready to read.
+- Prevented stale active-tab title requests from overwriting the newest Side Panel page title during rapid tab changes.
+- Removed unused Vite module preloads that caused cross-world extension warnings and redundant local resource requests in production Chromium pages.
+- Rechecked selection latency, password-field isolation, browser TTS and preview cleanup, themes, four interface languages, compact layouts, accessibility names, overflow, and production audio/security paths.
 
-Natural expression remains a subtle adjustment of standardized Web Speech rate, pitch, and volume. Its audible result depends on the installed browser/OS voice. This release does not add neural emotion, voice cloning, a remote TTS provider, SFX, BGM, tracking, credentials, or third-party secrets.
+TextReader continues to use browser/OS Web Speech only. SFX and BGM remain intentionally absent because notification sounds and background music would compete with spoken content. This release does not add neural emotion, voice cloning, remote TTS, tracking, client-side credentials, or third-party secrets.
 
 ## Verification
 
-- 32 automated test files with 138 passing tests covering partial Popup initialization, locale-unique preview state, grapheme-safe Hangul and emoji chunking, and the existing reading, settings, extraction, highlighting, and messaging behavior
-- ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, diff validation, version consistency, and sensitive-data checks
-- Isolated Chromium checks across Chinese, English, Japanese, and Korean interfaces; light/dark themes; compact and tall Side Panels; narrow and wide Popup/Options layouts; Popup failure states; duplicate-locale voice previews; overflow, accessibility, console, and page errors
+- 33 automated test files with 142 passing tests covering slider commit and failure recovery, Popup connection errors, active-tab title ordering, and the existing extraction, reading, voice, highlight, settings, and messaging behavior
+- ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, diff validation, version consistency, extension-resource integrity, and sensitive-data checks
+- Isolated Microsoft Edge production-extension checks across Chinese, English, Japanese, and Korean interfaces; light/dark themes; 280 × 400 and 400 × 700 Side Panels; 280-pixel Popup/Options layouts; slider persistence; restricted-page errors; accessibility names; and horizontal overflow
+- Local-page selection control appeared in about 18 ms without layout shift, remained inside the viewport, and stayed hidden for password-field interaction
 
-Previous announcement: [TextReader 0.3.4](./docs/announcements/history/0.3.4.md).
+Previous announcement: [TextReader 0.3.5](./docs/announcements/history/0.3.5.md).

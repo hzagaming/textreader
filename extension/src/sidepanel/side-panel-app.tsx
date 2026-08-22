@@ -185,15 +185,20 @@ export function SidePanelApp() {
   const stopPreview = useCallback(() => clearPreview(true), [clearPreview])
 
   useEffect(() => {
+    let titleRequestVersion = 0
     const updateTitle = () => {
+      const version = ++titleRequestVersion
       void chrome.tabs
         .query({ active: true, currentWindow: true })
         .then(([tab]) => {
+          if (version !== titleRequestVersion) return
           pageTabId.current = tab?.id
           pageWindowId.current = tab?.windowId
           setPageTitle(tab?.title || t('currentPage'))
         })
-        .catch(() => setPageTitle(t('currentPage')))
+        .catch(() => {
+          if (version === titleRequestVersion) setPageTitle(t('currentPage'))
+        })
     }
     updateTitle()
     const handleActivated: Parameters<typeof chrome.tabs.onActivated.addListener>[0] = (
@@ -212,6 +217,7 @@ export function SidePanelApp() {
     }
     chrome.tabs.onUpdated.addListener(handleUpdated)
     return () => {
+      titleRequestVersion += 1
       chrome.tabs.onActivated.removeListener(handleActivated)
       chrome.tabs.onUpdated.removeListener(handleUpdated)
     }
@@ -647,30 +653,30 @@ export function SidePanelApp() {
               </label>
               <SliderField
                 label={t('speed')}
-                valueLabel={`${reader.settings.speed.toFixed(2)}×`}
                 value={reader.settings.speed}
                 minimum={0.5}
                 maximum={2.5}
                 step={0.05}
-                onChange={(speed) => void updateSettings({ speed })}
+                formatValue={(speed) => `${speed.toFixed(2)}×`}
+                onChange={(speed) => updateSettings({ speed })}
               />
               <SliderField
                 label={t('pitch')}
-                valueLabel={`${reader.settings.pitch > 0 ? '+' : ''}${reader.settings.pitch}`}
                 value={reader.settings.pitch}
                 minimum={-50}
                 maximum={50}
                 step={1}
-                onChange={(pitch) => void updateSettings({ pitch })}
+                formatValue={(pitch) => `${pitch > 0 ? '+' : ''}${pitch}`}
+                onChange={(pitch) => updateSettings({ pitch })}
               />
               <SliderField
                 label={t('volume')}
-                valueLabel={`${Math.round(reader.settings.volume * 100)}%`}
                 value={reader.settings.volume}
                 minimum={0}
                 maximum={1}
                 step={0.01}
-                onChange={(volume) => void updateSettings({ volume })}
+                formatValue={(volume) => `${Math.round(volume * 100)}%`}
+                onChange={(volume) => updateSettings({ volume })}
               />
             </div>
           )}

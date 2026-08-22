@@ -113,4 +113,27 @@ describe('PopupApp', () => {
     )
     expect((selectionSwitch as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it('shows the page error returned by the content connection', async () => {
+    mocks.getActiveReaderState.mockResolvedValue({
+      ok: false,
+      error: {
+        code: 'UNSUPPORTED_PAGE',
+        message: 'TextReader cannot run on this browser page.',
+      },
+    })
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+
+    await act(async () => {
+      root?.render(<PopupApp />)
+      await Promise.resolve()
+    })
+
+    await vi.waitFor(() =>
+      expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+        'not available on this page',
+      ),
+    )
+    expect(document.body.textContent).toContain('Error')
+  })
 })

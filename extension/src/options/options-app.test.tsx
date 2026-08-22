@@ -29,7 +29,7 @@ let root: Root | undefined
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   vi.stubGlobal('chrome', {
-    runtime: { getManifest: () => ({ version: '0.3.5' }) },
+    runtime: { getManifest: () => ({ version: '1.1.0' }) },
     tabs: { create: vi.fn() },
   })
 })
@@ -99,6 +99,6 @@ describe('OptionsApp settings initialization', () => {
       await Promise.resolve()
     })
 
-    expect(document.querySelector('header > span')?.textContent).toBe('v0.3.5')
+    expect(document.querySelector('header > span')?.textContent).toBe('v1.1.0')
   })
 })

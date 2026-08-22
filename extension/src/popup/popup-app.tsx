@@ -4,6 +4,7 @@ import { Logo } from '@/components/logo'
 import {
   createTranslator,
   resolveUiLanguage,
+  translateErrorCode,
   type MessageKey,
 } from '@/services/i18n/i18n'
 import { getActiveReaderState, sendRuntimeMessage } from '@/services/messaging/transport'
@@ -53,13 +54,21 @@ export function PopupApp() {
         readerResult.value.data
       ) {
         setStatus(readerResult.value.data.status)
+      } else if (readerResult.status === 'fulfilled' && !readerResult.value.ok) {
+        setStatus('error')
       }
 
-      const loadFailed =
+      const requestFailed =
         tabsResult.status === 'rejected' ||
         settingsResult.status === 'rejected' ||
         readerResult.status === 'rejected'
-      setFeedback(loadFailed ? nextTranslator('unableToLoadSettings') : '')
+      setFeedback(
+        requestFailed
+          ? nextTranslator('unableToLoadSettings')
+          : readerResult.value.ok
+            ? ''
+            : translateErrorCode(readerResult.value.error.code, nextTranslator),
+      )
     })
     return () => {
       active = false
