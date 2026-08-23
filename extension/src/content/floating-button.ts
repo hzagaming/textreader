@@ -56,7 +56,9 @@ export class SelectionFloatingButton {
         border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 28px rgba(0,0,0,.24); }
       .choices button { box-shadow: none; flex: 1; height: 34px; min-width: 0; white-space: nowrap; }
       .choices button + button { background: rgba(255,255,255,.11); }
-      @media (prefers-reduced-motion: reduce) { button, .tip { transition: none; } }
+      @keyframes appear { from { opacity: .5; transform: translateY(2px) scale(.97); } }
+      .single-wrap:not([hidden]), .choices:not([hidden]) { animation: appear 150ms cubic-bezier(.22,1,.36,1) both; }
+      @media (prefers-reduced-motion: reduce) { button, .tip { transition: none; } .single-wrap, .choices { animation: none; } }
     `
 
     this.singleWrap = document.createElement('div')

@@ -33,7 +33,20 @@ import { useReaderStore } from '@/stores/reader-store'
 import { estimateSpeechSeconds, formatDuration } from '@/utils/time'
 import { primaryReaderCommand } from './side-panel-commands'
 
-function PlayIcon({ playing }: { playing: boolean }) {
+function PlayIcon({ loading, playing }: { loading: boolean; playing: boolean }) {
+  if (loading)
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="tr-spinner size-5"
+        fill="none"
+        aria-hidden="true"
+        data-reader-spinner
+      >
+        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeOpacity="0.28" />
+        <path d="M12 4a8 8 0 0 1 8 8" stroke="currentColor" strokeLinecap="round" />
+      </svg>
+    )
   return playing ? (
     <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden="true">
       <path d="M7 5h4v14H7V5Zm6 0h4v14h-4V5Z" />
@@ -418,7 +431,10 @@ export function SidePanelApp() {
   }
 
   return (
-    <main className="flex h-screen min-h-0 flex-col p-3.5" aria-busy={isLoading}>
+    <main
+      className="tr-app-enter flex h-screen min-h-0 flex-col p-3.5"
+      aria-busy={isLoading}
+    >
       <header className="mb-3 flex items-center justify-between px-1 py-1">
         <Logo />
         <span
@@ -430,7 +446,7 @@ export function SidePanelApp() {
       </header>
 
       {reader.resumeAvailable && (
-        <section className="mb-3 rounded-[16px] border border-[var(--tr-border)] bg-[var(--tr-surface)] p-3.5 shadow-sm">
+        <section className="tr-panel-reveal mb-3 rounded-[16px] border border-[var(--tr-border)] bg-[var(--tr-surface)] p-3.5 shadow-sm">
           <p className="m-0 text-[12px] font-semibold">
             {t('continueAt', [String(Math.round(reader.progress * 100))])}
           </p>
@@ -548,14 +564,15 @@ export function SidePanelApp() {
             </button>
             <button
               type="button"
-              className="grid size-11 place-items-center rounded-full bg-[var(--tr-accent)] text-[var(--tr-accent-text)] shadow-md transition hover:scale-[1.02] disabled:cursor-wait disabled:opacity-70"
+              data-state={isLoading ? 'loading' : isPlaying ? 'playing' : 'idle'}
+              className="tr-reader-primary grid size-11 place-items-center rounded-full bg-[var(--tr-accent)] text-[var(--tr-accent-text)] shadow-md transition hover:scale-[1.02] active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
               disabled={isLoading}
               onClick={() => void handlePrimary()}
               aria-label={
                 isLoading ? t('startingPlayback') : isPlaying ? t('pause') : t('play')
               }
             >
-              <PlayIcon playing={isPlaying} />
+              <PlayIcon loading={isLoading} playing={isPlaying} />
             </button>
             <button
               type="button"
@@ -620,7 +637,7 @@ export function SidePanelApp() {
             {t('voiceSettings')}
           </button>
           {voiceSettingsOpen && (
-            <div className="mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pb-1 pr-1">
+            <div className="tr-panel-reveal mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto pb-1 pr-1">
               <VoiceLibrary
                 settings={reader.settings}
                 voices={voices}
@@ -690,7 +707,7 @@ export function SidePanelApp() {
       {activeToast && (
         <div
           role="alert"
-          className="mt-2 rounded-xl bg-[#1e2530] px-3.5 py-2.5 text-[12px] text-white shadow-lg"
+          className="tr-toast-enter mt-2 rounded-xl bg-[#1e2530] px-3.5 py-2.5 text-[12px] text-white shadow-lg"
         >
           {activeToast}
         </div>

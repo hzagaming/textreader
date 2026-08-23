@@ -51,6 +51,17 @@ afterEach(() => {
 })
 
 describe('PopupApp', () => {
+  it('uses the shared entrance motion without changing popup semantics', async () => {
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+
+    await act(async () => {
+      root?.render(<PopupApp />)
+      await Promise.resolve()
+    })
+
+    expect(document.querySelector('main')?.className).toContain('tr-app-enter')
+  })
+
   it('keeps the selection switch disabled until settings finish loading', async () => {
     let resolveSettings: ((settings: typeof DEFAULT_SETTINGS) => void) | undefined
     mocks.getSettings.mockReturnValue(
@@ -135,5 +146,10 @@ describe('PopupApp', () => {
       ),
     )
     expect(document.body.textContent).toContain('Error')
+    const openReaderButton = [...document.querySelectorAll('button')].find(
+      (candidate) => candidate.textContent?.trim() === 'Open Reader',
+    )
+    expect(openReaderButton).toBeInstanceOf(HTMLButtonElement)
+    expect((openReaderButton as HTMLButtonElement).disabled).toBe(true)
   })
 })

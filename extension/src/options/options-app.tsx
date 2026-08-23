@@ -63,7 +63,7 @@ export function OptionsApp() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-2xl px-5 py-10">
+    <main className="tr-app-enter mx-auto min-h-screen max-w-2xl px-5 py-10">
       <header className="mb-7 flex items-end justify-between">
         <div>
           <Logo />
@@ -83,7 +83,7 @@ export function OptionsApp() {
               : `v${version}`}
         </span>
       </header>
-      <div className="space-y-4">
+      <div className="tr-stagger space-y-4">
         <section className="rounded-[18px] border border-[var(--tr-border)] bg-[var(--tr-surface)] p-5">
           <h2 className="m-0 text-[14px] font-semibold">{t('selectionSection')}</h2>
           <div className="mt-4 flex items-center justify-between">

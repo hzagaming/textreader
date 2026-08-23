@@ -16,6 +16,7 @@ export function PopupApp() {
   const [pageTitle, setPageTitle] = useState(() => t('currentPage'))
   const [tabId, setTabId] = useState<number | null>(null)
   const [status, setStatus] = useState<ReaderStatus>('idle')
+  const [readerConnected, setReaderConnected] = useState(false)
   const [selectionEnabled, setSelectionEnabled] = useState(true)
   const [selectionSaving, setSelectionSaving] = useState(false)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
@@ -57,6 +58,7 @@ export function PopupApp() {
       } else if (readerResult.status === 'fulfilled' && !readerResult.value.ok) {
         setStatus('error')
       }
+      setReaderConnected(readerResult.status === 'fulfilled' && readerResult.value.ok)
 
       const requestFailed =
         tabsResult.status === 'rejected' ||
@@ -101,7 +103,7 @@ export function PopupApp() {
   }
 
   const openReader = async () => {
-    if (tabId === null) return
+    if (tabId === null || !readerConnected) return
     const response = await sendRuntimeMessage({
       type: 'OPEN_SIDE_PANEL',
       payload: { tabId },
@@ -114,7 +116,7 @@ export function PopupApp() {
   }
 
   return (
-    <main className="w-[320px] max-w-full p-3.5">
+    <main className="tr-app-enter w-[320px] max-w-full p-3.5">
       <div className="rounded-[18px] border border-[var(--tr-border)] bg-[var(--tr-surface)] p-4 shadow-sm">
         <Logo />
         <div className="my-4 rounded-xl bg-[var(--tr-soft)] p-3">
@@ -127,8 +129,8 @@ export function PopupApp() {
         </div>
         <button
           type="button"
-          disabled={tabId === null}
-          className="h-10 w-full rounded-xl bg-[var(--tr-accent)] text-[12px] font-semibold text-[var(--tr-accent-text)] disabled:opacity-50"
+          disabled={tabId === null || !readerConnected}
+          className="h-10 w-full rounded-xl bg-[var(--tr-accent)] text-[12px] font-semibold text-[var(--tr-accent-text)] transition-transform active:scale-[0.985] disabled:opacity-50"
           onClick={() => void openReader()}
         >
           {t('openReader')}
@@ -150,7 +152,10 @@ export function PopupApp() {
           </button>
         </div>
         {feedback && (
-          <p className="mb-0 mt-3 text-[11px] text-[var(--tr-danger)]" role="alert">
+          <p
+            className="tr-toast-enter mb-0 mt-3 text-[11px] text-[var(--tr-danger)]"
+            role="alert"
+          >
             {feedback}
           </p>
         )}

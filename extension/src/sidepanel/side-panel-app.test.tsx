@@ -230,6 +230,20 @@ describe('SidePanel voice preview', () => {
     )
     expect(settingsButton.parentElement?.className).toContain('flex-1')
     expect(settingsButton.getAttribute('aria-expanded')).toBe('true')
+    expect(settingsButton.nextElementSibling?.className).toContain('tr-panel-reveal')
+  })
+
+  it('shows dedicated visual feedback while playback is starting', async () => {
+    useReaderStore.getState().setReader({
+      ...createIdleReaderState(DEFAULT_SETTINGS),
+      status: 'loading',
+    })
+
+    await renderApp(true, false)
+
+    const primary = button('Starting playback')
+    expect(primary.dataset.state).toBe('loading')
+    expect(primary.querySelector('[data-reader-spinner]')).not.toBeNull()
   })
 
   it('lets the user disable natural expression', async () => {

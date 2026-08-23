@@ -6,8 +6,8 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 
 ## Release announcements
 
-- Current: [TextReader 1.1.0](./ANNOUNCEMENT.md)
-- History: [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
+- Current: [TextReader 1.1.1](./ANNOUNCEMENT.md)
+- History: [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
 
 ## Features
 
@@ -23,6 +23,7 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 - 200–500-character, grapheme-safe speech chunk preparation for future remote TTS providers, including unspaced CJK, Hangul, and emoji text
 - Web Speech API playback with automatic per-language voice switching and voice, speed, pitch, volume, and optional sentence-aware Natural expression controls
 - Responsive voice controls that preview slider values immediately and persist once per completed adjustment
+- Lightweight entrance, expansion, loading, playback, and feedback motion with reduced-motion support
 - Searchable voice library with language filters, favorites, recent voices, availability feedback, exact-locale fallback, and on-device/network-use labels
 - Interface-aware, per-sentence expressive previews for any listed voice without changing the saved selection, plus custom voice-setting presets
 - Side Panel article reader with current-sentence tracking and viewport-aware panel scrolling
@@ -32,7 +33,7 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 - Estimated reading duration based on text and speech speed
 - Popup, options page, context menus, and persistent settings
 - Tab activation/reload refresh so the Side Panel does not retain another tab's document
-- Accurate restricted-page feedback in the Popup and stale-safe active-tab titles in the Side Panel
+- Accurate restricted-page feedback and action availability in the Popup, plus stale-safe active-tab titles in the Side Panel
 - Keyboard navigation while TextReader is active:
   - `Space`: pause/resume
   - `ArrowLeft` / `ArrowRight`: previous/next sentence
