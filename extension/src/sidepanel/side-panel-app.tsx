@@ -131,7 +131,9 @@ function DocumentView({
                       : 'text-[var(--tr-muted)] hover:text-[var(--tr-text)]'
                   }`}
                   aria-current={current ? 'true' : undefined}
-                  aria-label={t('jumpToSentence', [String(sentence.index + 1)])}
+                  aria-label={`${sentence.text} · ${t('jumpToSentence', [
+                    String(sentence.index + 1),
+                  ])}`}
                   onClick={() => onJump(sentence.index)}
                 >
                   {sentence.text}{' '}
@@ -727,33 +729,59 @@ export function SidePanelApp() {
       )}
 
       <footer
-        className={`mt-3 gap-2 ${showFooterReaderActions ? 'grid grid-cols-[1fr_1fr_auto_auto]' : 'flex justify-end'}`}
+        className={`mt-3 gap-1.5 ${showFooterReaderActions ? 'grid grid-cols-[1fr_1fr_auto_auto]' : 'flex justify-end'}`}
       >
         {showFooterReaderActions && (
           <>
             <button
               type="button"
               disabled={isLoading}
-              className="h-10 rounded-xl bg-[var(--tr-accent)] px-2 text-[11px] font-semibold text-[var(--tr-accent-text)]"
+              className="grid h-10 place-items-center whitespace-nowrap rounded-xl bg-[var(--tr-accent)] px-1 text-[11px] font-semibold text-[var(--tr-accent-text)]"
+              aria-label={t('readArticle')}
+              title={t('readArticle')}
               onClick={() =>
                 void command({ type: 'READ_PAGE', payload: { mode: 'article' } })
               }
             >
-              {t('readArticle')}
+              <svg
+                viewBox="0 0 24 24"
+                className="hidden size-4 max-[330px]:block"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden="true"
+              >
+                <path d="M7 3.5h10a2 2 0 0 1 2 2v15H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" />
+                <path d="M8.5 8h7M8.5 12h7M8.5 16h4.5" />
+              </svg>
+              <span className="max-[330px]:sr-only">{t('readArticle')}</span>
             </button>
             <button
               type="button"
               disabled={isLoading}
-              className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-2 text-[11px] font-medium"
+              className="grid h-10 place-items-center whitespace-nowrap rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-1 text-[11px] font-medium"
+              aria-label={t('readPage')}
+              title={t('readPage')}
               onClick={() =>
                 void command({ type: 'READ_PAGE', payload: { mode: 'page' } })
               }
             >
-              {t('readPage')}
+              <svg
+                viewBox="0 0 24 24"
+                className="hidden size-4 max-[330px]:block"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M3.8 12h16.4M12 3.5a13 13 0 0 1 0 17M12 3.5a13 13 0 0 0 0 17" />
+              </svg>
+              <span className="max-[330px]:sr-only">{t('readPage')}</span>
             </button>
             <button
               type="button"
-              className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-3 text-[11px] font-medium disabled:opacity-40"
+              className="h-10 whitespace-nowrap rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-2 text-[11px] font-medium disabled:opacity-40"
               disabled={!hasDocument && !isLoading}
               onClick={() => void command({ type: 'READER_STOP' })}
             >

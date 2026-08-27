@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   ),
   getReaderDocument: vi.fn(),
   getReaderState: vi.fn(),
+  subscribeReaderUpdates: vi.fn(),
 }))
 
 vi.mock('@/services/settings/settings', async (importOriginal) => {
@@ -39,7 +40,7 @@ vi.mock('@/services/messaging/transport', () => ({
 }))
 
 vi.mock('@/services/messaging/reader-updates-connection', () => ({
-  subscribeToReaderUpdates: vi.fn(() => vi.fn()),
+  subscribeToReaderUpdates: mocks.subscribeReaderUpdates,
 }))
 
 beforeEach(() => {
@@ -49,6 +50,7 @@ beforeEach(() => {
   mocks.getActiveTab.mockReset().mockResolvedValue(undefined)
   mocks.getReaderDocument.mockReset()
   mocks.getReaderState.mockReset()
+  mocks.subscribeReaderUpdates.mockReset().mockImplementation(() => vi.fn())
 })
 
 afterEach(() => {
@@ -203,6 +205,58 @@ describe('reader settings initialization', () => {
     })
 
     expect(useReaderStore.getState().reader.settings.uiLanguage).toBe('zh')
+    act(() => root.unmount())
+  })
+
+  it('clears a stale connection error when a live reader update arrives', async () => {
+    let emitUpdate: ((message: unknown) => void) | undefined
+    mocks.getSettings.mockResolvedValueOnce(DEFAULT_SETTINGS)
+    mocks.getActiveTab.mockResolvedValueOnce({ id: 4, windowId: 1 })
+    mocks.getReaderState.mockResolvedValueOnce({
+      ok: false,
+      error: { code: 'UNSUPPORTED_PAGE', message: 'Not connected yet' },
+    })
+    mocks.getReaderDocument.mockResolvedValueOnce({
+      ok: false,
+      error: { code: 'EMPTY_TEXT', message: 'No document' },
+    })
+    mocks.subscribeReaderUpdates.mockImplementationOnce(
+      (listener: (message: unknown) => void) => {
+        emitUpdate = listener
+        return vi.fn()
+      },
+    )
+    vi.stubGlobal('chrome', {
+      tabs: {
+        onActivated: { addListener: vi.fn(), removeListener: vi.fn() },
+        onUpdated: { addListener: vi.fn(), removeListener: vi.fn() },
+      },
+    })
+    const { useReaderConnection } = await import('./use-reader-connection')
+    const root = createRoot(document.body.appendChild(document.createElement('div')))
+    const translator = createTranslator('en')
+
+    function Probe() {
+      return createElement('span', null, useReaderConnection(translator))
+    }
+
+    await act(async () => {
+      root.render(createElement(Probe))
+      await Promise.resolve()
+    })
+    await vi.waitFor(() => expect(document.body.textContent).not.toBe(''))
+
+    act(() => {
+      emitUpdate?.({
+        tabId: 4,
+        message: {
+          type: 'READER_STATE_CHANGED',
+          payload: createIdleReaderState(DEFAULT_SETTINGS),
+        },
+      })
+    })
+
+    expect(document.body.textContent).toBe('')
     act(() => root.unmount())
   })
 })

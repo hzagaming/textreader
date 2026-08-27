@@ -1,22 +1,24 @@
-# TextReader 1.1.4
+# TextReader 1.1.5
 
 Released on August 28, 2026.
 
-TextReader 1.1.4 protects rapid voice personalization and settings interactions from stale UI state after a full UI, UX, motion, and audio-lifecycle audit.
+TextReader 1.1.5 strengthens selection responsiveness, recovery feedback, and compact multilingual layouts after a full UI, UX, motion, and audio-lifecycle audit.
 
 ## Highlights
 
-- Added a view-level settings queue that computes each queued change from the latest successful settings, preventing rapid favorites, recent voices, per-language mappings, presets, and repeated switches from overwriting earlier interactions.
-- Kept queued updates moving after a failed write and immediately synchronized successful Side Panel and Options changes, while preventing an older Options save-status timer from hiding newer feedback.
-- Preserved exact locale-aware voice identities throughout rapid updates and added persistent localized accessible names to voice search and preset-name inputs.
-- Rechecked compact and wide layouts, themes, reduced motion, multilingual voice controls, preview/playback isolation, accessibility feedback, production resources, and audio ownership.
+- Prevented both pending timers and late unchanged `selectionchange` events from restoring the floating read control after scrolling or clicking elsewhere, while keeping real mouse selections visible in under a frame.
+- Cleared stale Side Panel connection errors as soon as a valid live reader update proves the page has reconnected, and recovered the Options status when valid settings arrive after an initial load failure.
+- Kept sentence text in direct-jump accessible names so assistive technology announces both the readable content and its action.
+- Added overflow-safe narrow Side Panel article/page icons with complete localized accessible names and hover titles; full action text remains visible on wider panels.
+- Rechecked compact and wide layouts, four interface languages, themes, reduced motion, voice controls, preview/playback isolation, production resources, and audio ownership.
 
 TextReader continues to use browser/OS Web Speech only. SFX and BGM remain intentionally absent because notification sounds and background music would compete with spoken content. No remote audio, tracking, client-side credentials, or third-party secrets were added.
 
 ## Verification
 
-- 34 automated test files with 162 passing tests, including rapid favorites, per-language mappings, repeated switches, failed-write recovery, exact locale identity, and accessible voice-library fields
+- 34 automated test files with 168 passing tests, including selection timer and late-event races, live connection recovery, delayed settings recovery, sentence accessibility, and compact footer actions
 - ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, diff validation, version consistency, extension-resource integrity, and sensitive-data checks
-- Isolated production-bundle UI checks for Popup, Side Panel, Options, 280 × 400 and 400 × 700 layouts, reduced-motion behavior, horizontal overflow, accessible controls, and product console errors
+- Isolated production-bundle UI checks for Popup, Side Panel, Options, 280 × 400 through 800 × 800 layouts, multilingual compact actions, reduced-motion behavior, horizontal overflow, accessible controls, and product console errors
+- Production content-script checks measured sub-2ms short and large selection-control response, viewport-safe placement, and persistent hiding after a late post-scroll selection event
 
-Previous announcement: [TextReader 1.1.3](./docs/announcements/history/1.1.3.md).
+Previous announcement: [TextReader 1.1.4](./docs/announcements/history/1.1.4.md).

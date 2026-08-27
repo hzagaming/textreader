@@ -201,6 +201,19 @@ describe('SidePanel voice preview', () => {
     ).toHaveLength(1)
   })
 
+  it('keeps compact footer reading actions fully named', async () => {
+    await renderApp(true, false)
+
+    const readArticle = button('Read Article')
+    const readPage = button('Read Page')
+    expect(readArticle.getAttribute('aria-label')).toBe('Read Article')
+    expect(readArticle.getAttribute('title')).toBe('Read Article')
+    expect(readPage.getAttribute('aria-label')).toBe('Read Page')
+    expect(readPage.getAttribute('title')).toBe('Read Page')
+    expect(readArticle.querySelector('span')?.className).toContain('max-[330px]:sr-only')
+    expect(readPage.querySelector('span')?.className).toContain('max-[330px]:sr-only')
+  })
+
   it('keeps empty-state actions in the scroll flow on short panels', async () => {
     await renderApp(false, false)
     const emptyState = document.querySelector('[data-reader-empty]')
@@ -237,6 +250,43 @@ describe('SidePanel voice preview', () => {
     ).toBe('Search voices…')
     expect(document.querySelector('input[type="text"]')?.getAttribute('aria-label')).toBe(
       'Preset name',
+    )
+  })
+
+  it('keeps sentence text in the accessible jump label', async () => {
+    useReaderStore.getState().setReader({
+      ...createIdleReaderState(DEFAULT_SETTINGS),
+      status: 'stopped',
+      text: 'Readable sentence.',
+      sentenceCount: 1,
+    })
+    useReaderStore.getState().setDocument({
+      id: 'document-accessibility',
+      url: 'https://example.com',
+      title: 'Accessible document',
+      paragraphs: [
+        {
+          id: 'paragraph-1',
+          text: 'Readable sentence.',
+          index: 0,
+          sentences: [
+            {
+              id: 'sentence-1',
+              text: 'Readable sentence.',
+              index: 0,
+              paragraphId: 'paragraph-1',
+            },
+          ],
+        },
+      ],
+      plainText: 'Readable sentence.',
+      createdAt: 1,
+    })
+
+    await renderApp(false, false)
+
+    expect(document.querySelector('article button')?.getAttribute('aria-label')).toBe(
+      'Readable sentence. · Jump to sentence 1',
     )
   })
 

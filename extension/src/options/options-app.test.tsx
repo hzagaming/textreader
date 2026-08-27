@@ -113,6 +113,29 @@ describe('OptionsApp settings initialization', () => {
     expect(document.querySelector('header > span')?.textContent).toBe('v1.1.1')
   })
 
+  it('recovers when settings arrive after the initial load has failed', async () => {
+    let emitSettings: ((settings: ReaderSettings) => void) | undefined
+    mocks.getSettings.mockRejectedValueOnce(new Error('storage failed'))
+    mocks.subscribeSettings.mockImplementationOnce(
+      (listener: (settings: ReaderSettings) => void) => {
+        emitSettings = listener
+        return vi.fn()
+      },
+    )
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+    await act(async () => {
+      root?.render(<OptionsApp />)
+      await Promise.resolve()
+    })
+    await vi.waitFor(() =>
+      expect(document.querySelector('header > span')?.textContent).toBe('Unable to save'),
+    )
+
+    act(() => emitSettings?.(DEFAULT_SETTINGS))
+
+    expect(document.querySelector('header > span')?.textContent).toBe('v1.1.1')
+  })
+
   it('applies rapid repeated switch clicks to the latest saved settings', async () => {
     root = createRoot(document.body.appendChild(document.createElement('div')))
     await act(async () => {

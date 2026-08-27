@@ -6,13 +6,13 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 
 ## Release announcements
 
-- Current: [TextReader 1.1.4](./ANNOUNCEMENT.md)
-- History: [TextReader 1.1.3](./docs/announcements/history/1.1.3.md), [TextReader 1.1.2](./docs/announcements/history/1.1.2.md), [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
+- Current: [TextReader 1.1.5](./ANNOUNCEMENT.md)
+- History: [TextReader 1.1.4](./docs/announcements/history/1.1.4.md), [TextReader 1.1.3](./docs/announcements/history/1.1.3.md), [TextReader 1.1.2](./docs/announcements/history/1.1.2.md), [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
 
 ## Features
 
 - Manifest V3 extension for Chrome 116+ and current Microsoft Edge
-- Meaningful selection detection with a Shadow DOM floating read button
+- Meaningful selection detection with an immediate Shadow DOM floating read button and stale-event suppression after scrolling
 - Ctrl+A-aware selection menu offering **Read selection** and **Read article** without blocking the webpage shortcut
 - Mozilla Readability article extraction from a cloned document
 - Fallback extraction through `article`, `main`, largest text container, and cleaned body text
@@ -24,6 +24,7 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 - Web Speech API playback with automatic per-language voice switching and voice, speed, pitch, volume, and optional sentence-aware Natural expression controls
 - Responsive voice controls that preview slider values immediately and persist once per completed adjustment
 - Lightweight entrance, expansion, loading, playback, and feedback motion with reduced-motion support
+- Overflow-safe compact Side Panel actions with fully named narrow-screen icon controls
 - Searchable voice library with language filters, favorites, recent voices, availability feedback, persisted exact-locale identity, and on-device/network-use labels
 - Interface-aware, per-sentence expressive previews for any listed voice without changing the saved selection, plus custom voice-setting presets
 - Side Panel article reader with current-sentence tracking and viewport-aware panel scrolling

@@ -6,10 +6,18 @@ import {
 
 type SelectionListener = (selection: TextSelection | null) => void
 
+interface SelectionFingerprint {
+  anchorNode: Node | null
+  anchorOffset: number
+  focusNode: Node | null
+  focusOffset: number
+}
+
 export class SelectionManager {
   private selection: TextSelection | null = null
   private range: Range | null = null
   private updateTimer: number | undefined
+  private ignoredSelection: SelectionFingerprint | undefined
   private started = false
 
   constructor(private readonly onSelection: SelectionListener) {}
@@ -34,8 +42,8 @@ export class SelectionManager {
     document.removeEventListener('scroll', this.handleScroll, true)
     document.removeEventListener('mousedown', this.handleMouseDown, true)
     window.removeEventListener('resize', this.handleScroll)
-    if (this.updateTimer !== undefined) window.clearTimeout(this.updateTimer)
-    this.updateTimer = undefined
+    this.cancelScheduledUpdate()
+    this.ignoredSelection = undefined
   }
 
   getCurrent(): TextSelection | null {
@@ -56,7 +64,18 @@ export class SelectionManager {
     this.updateImmediately()
   }
 
-  private readonly handleSelectionChange = () => this.scheduleUpdate(40)
+  private readonly handleSelectionChange = () => {
+    const selection = this.selectionFingerprint()
+    if (
+      selection &&
+      this.ignoredSelection &&
+      this.sameSelection(selection, this.ignoredSelection)
+    ) {
+      return
+    }
+    this.ignoredSelection = undefined
+    this.scheduleUpdate(40)
+  }
 
   private readonly handleKeyUp = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
@@ -66,16 +85,24 @@ export class SelectionManager {
     this.updateImmediately()
   }
 
-  private readonly handleScroll = () => this.hide()
+  private readonly handleScroll = () => {
+    this.cancelScheduledUpdate()
+    this.ignoredSelection = this.selectionFingerprint()
+    this.hide()
+  }
 
   private readonly handleMouseDown = (event: MouseEvent) => {
     const target = event.target instanceof Node ? event.target : null
     const element = target instanceof Element ? target : target?.parentElement
-    if (!element?.closest('[data-textreader-root]')) this.hide()
+    if (!element?.closest('[data-textreader-root]')) {
+      this.cancelScheduledUpdate()
+      this.ignoredSelection = this.selectionFingerprint()
+      this.hide()
+    }
   }
 
   private scheduleUpdate(delay: number): void {
-    if (this.updateTimer !== undefined) window.clearTimeout(this.updateTimer)
+    this.cancelScheduledUpdate()
     this.updateTimer = window.setTimeout(() => {
       this.updateTimer = undefined
       this.update()
@@ -83,17 +110,45 @@ export class SelectionManager {
   }
 
   private updateImmediately(): void {
-    if (this.updateTimer !== undefined) window.clearTimeout(this.updateTimer)
-    this.updateTimer = undefined
+    this.cancelScheduledUpdate()
+    this.ignoredSelection = undefined
     this.update()
   }
 
   private clear(): void {
-    if (this.updateTimer !== undefined) window.clearTimeout(this.updateTimer)
-    this.updateTimer = undefined
+    this.cancelScheduledUpdate()
+    this.ignoredSelection = undefined
     this.selection = null
     this.range = null
     this.onSelection(null)
+  }
+
+  private cancelScheduledUpdate(): void {
+    if (this.updateTimer !== undefined) window.clearTimeout(this.updateTimer)
+    this.updateTimer = undefined
+  }
+
+  private selectionFingerprint(): SelectionFingerprint | undefined {
+    const selection = window.getSelection()
+    if (!selection) return undefined
+    return {
+      anchorNode: selection.anchorNode,
+      anchorOffset: selection.anchorOffset,
+      focusNode: selection.focusNode,
+      focusOffset: selection.focusOffset,
+    }
+  }
+
+  private sameSelection(
+    left: SelectionFingerprint,
+    right: SelectionFingerprint,
+  ): boolean {
+    return (
+      left.anchorNode === right.anchorNode &&
+      left.anchorOffset === right.anchorOffset &&
+      left.focusNode === right.focusNode &&
+      left.focusOffset === right.focusOffset
+    )
   }
 
   private update(): void {

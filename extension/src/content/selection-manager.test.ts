@@ -62,6 +62,65 @@ describe('SelectionManager', () => {
     manager.stop()
   })
 
+  it('does not restore a pending selection control after scrolling', () => {
+    vi.useFakeTimers()
+    document.body.innerHTML = '<p>Selection waiting to publish.</p>'
+    const paragraph = document.querySelector('p')!
+    const range = document.createRange()
+    range.selectNodeContents(paragraph)
+    vi.spyOn(range, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 30, 180, 24))
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      anchorNode: paragraph.firstChild,
+      getRangeAt: () => range,
+      isCollapsed: false,
+      rangeCount: 1,
+      toString: () => 'Selection waiting to publish.',
+    } as unknown as Selection)
+    const onSelection = vi.fn()
+    const manager = new SelectionManager(onSelection)
+    manager.start()
+
+    document.dispatchEvent(new Event('selectionchange'))
+    document.dispatchEvent(new Event('scroll'))
+    vi.advanceTimersByTime(40)
+
+    expect(onSelection).toHaveBeenCalledOnce()
+    expect(onSelection).toHaveBeenCalledWith(null)
+    expect(manager.getCurrent()).toBeNull()
+    manager.stop()
+  })
+
+  it('ignores a late unchanged selection event after scrolling', () => {
+    vi.useFakeTimers()
+    document.body.innerHTML = '<p>Selection already published.</p>'
+    const paragraph = document.querySelector('p')!
+    const range = document.createRange()
+    range.selectNodeContents(paragraph)
+    vi.spyOn(range, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 30, 180, 24))
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      anchorNode: paragraph.firstChild,
+      anchorOffset: 0,
+      focusNode: paragraph.firstChild,
+      focusOffset: paragraph.textContent?.length ?? 0,
+      getRangeAt: () => range,
+      isCollapsed: false,
+      rangeCount: 1,
+      toString: () => 'Selection already published.',
+    } as unknown as Selection)
+    const onSelection = vi.fn()
+    const manager = new SelectionManager(onSelection)
+    manager.start()
+
+    paragraph.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+    document.dispatchEvent(new Event('scroll'))
+    document.dispatchEvent(new Event('selectionchange'))
+    vi.advanceTimersByTime(40)
+
+    expect(onSelection).toHaveBeenCalledTimes(2)
+    expect(onSelection).toHaveBeenLastCalledWith(null)
+    manager.stop()
+  })
+
   it('retains a clone of the selected DOM range', () => {
     vi.useFakeTimers()
     document.body.innerHTML = `

@@ -101,6 +101,7 @@ export function useReaderConnection(t: Translator) {
 
     const handleMessage = (update: unknown) => {
       if (!isReaderUpdateEnvelope(update) || update.tabId !== activeTabId.current) return
+      setConnectionError('')
       if (update.message.type === 'READER_STATE_CHANGED') {
         setReader(
           localSettings.current

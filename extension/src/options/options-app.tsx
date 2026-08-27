@@ -24,7 +24,12 @@ export function OptionsApp() {
     let settingsVersion = 0
     const unsubscribe = settingsService.subscribe((nextSettings) => {
       settingsVersion += 1
+      if (statusTimer.current !== undefined) {
+        window.clearTimeout(statusTimer.current)
+        statusTimer.current = undefined
+      }
       setSettings(nextSettings)
+      setSaveState('idle')
     })
     const initialSettingsVersion = settingsVersion
     void settingsService
