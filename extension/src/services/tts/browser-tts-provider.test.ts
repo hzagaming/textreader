@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrowserTTSProvider, type PlaybackSnapshot } from './browser-tts-provider'
+import { voiceIdentity } from './voice-catalog'
 
 class FakeUtterance {
   rate = 1
@@ -230,6 +231,34 @@ describe('BrowserTTSProvider', () => {
       {} as SpeechSynthesisEvent,
     )
     expect(utterances[1]).toMatchObject({ lang: 'zh-CN', voice: chinese })
+  })
+
+  it('uses the exact persisted locale when browser voice IDs collide', async () => {
+    const traditional = {
+      name: 'Shared',
+      lang: 'zh-TW',
+      voiceURI: 'shared',
+      default: true,
+      localService: true,
+    } as SpeechSynthesisVoice
+    const chinese = {
+      ...traditional,
+      lang: 'zh-CN',
+      default: false,
+    } as SpeechSynthesisVoice
+    const { synthesis, utterances } = createSynthesis(false, [traditional, chinese])
+    const provider = new BrowserTTSProvider(synthesis, vi.fn())
+
+    await provider.speak({
+      text: '你好。',
+      rate: 1,
+      pitch: 0,
+      volume: 1,
+      readingLanguage: 'zh',
+      voiceId: voiceIdentity(chinese),
+    })
+
+    expect(utterances[0]).toMatchObject({ lang: 'zh-CN', voice: chinese })
   })
 
   it('reports an error when the browser voice never starts', async () => {

@@ -4,9 +4,11 @@ import { resolveUiLanguage, type Translator } from '@/services/i18n/i18n'
 import { normalizeSupportedLanguage } from '@/services/language/language'
 import {
   addRecentVoice,
+  canonicalizeVoiceIds,
   filterVoices,
   selectVoiceForLanguage,
   voiceIdentity,
+  voiceMatchesId,
   type VoiceFilterLanguage,
 } from '@/services/tts/voice-catalog'
 import {
@@ -33,10 +35,6 @@ interface VoiceLibraryProps {
   onStopPreview: () => void
 }
 
-function idOf(voice: SpeechSynthesisVoice): string {
-  return voice.voiceURI || voice.name
-}
-
 function languageKey(
   language: SupportedLanguage,
 ): 'english' | 'chinese' | 'japanese' | 'korean' {
@@ -47,6 +45,10 @@ function languageKey(
     ko: 'korean',
   } as const
   return keys[language]
+}
+
+function voiceLabel(voice: SpeechSynthesisVoice): string {
+  return `${voice.name}${voice.lang ? ` (${voice.lang})` : ''}`
 }
 
 export function VoiceLibrary({
@@ -64,13 +66,19 @@ export function VoiceLibrary({
   const [languageFilter, setLanguageFilter] = useState<VoiceFilterLanguage>('all')
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [presetName, setPresetName] = useState('')
-  const favorites = useMemo(
-    () => new Set(settings.favoriteVoiceIds),
-    [settings.favoriteVoiceIds],
+  const selectedVoice = voices.find((voice) => voiceMatchesId(voice, settings.voiceId))
+  const favoriteIds = useMemo(
+    () => canonicalizeVoiceIds(settings.favoriteVoiceIds, voices),
+    [settings.favoriteVoiceIds, voices],
+  )
+  const favorites = useMemo(() => new Set(favoriteIds), [favoriteIds])
+  const recentIds = useMemo(
+    () => canonicalizeVoiceIds(settings.recentVoiceIds, voices),
+    [settings.recentVoiceIds, voices],
   )
   const recent = useMemo(
-    () => new Map(settings.recentVoiceIds.map((id, index) => [id, index])),
-    [settings.recentVoiceIds],
+    () => new Map(recentIds.map((id, index) => [id, index])),
+    [recentIds],
   )
   const filteredVoices = useMemo(() => {
     const filtered = filterVoices(voices, {
@@ -84,19 +92,25 @@ export function VoiceLibrary({
         voice,
         index,
         priority:
-          idOf(voice) === settings.voiceId
+          voice === selectedVoice
             ? -100
-            : favorites.has(idOf(voice))
+            : favorites.has(voiceIdentity(voice))
               ? -50
-              : (recent.get(idOf(voice)) ?? 100),
+              : (recent.get(voiceIdentity(voice)) ?? 100),
       }))
       .sort((left, right) => left.priority - right.priority || left.index - right.index)
       .slice(0, 60)
       .map(({ voice }) => voice)
-  }, [favorites, favoritesOnly, languageFilter, query, recent, settings, voices])
-  const selectedVoice = voices.find(
-    (voice) => idOf(voice) === settings.voiceId || voice.name === settings.voiceId,
-  )
+  }, [
+    favorites,
+    favoritesOnly,
+    languageFilter,
+    query,
+    recent,
+    selectedVoice,
+    settings,
+    voices,
+  ])
   const preferredPreviewLanguage =
     settings.readingLanguage === 'auto'
       ? (normalizeSupportedLanguage(selectedVoice?.lang) ??
@@ -123,25 +137,33 @@ export function VoiceLibrary({
     (!normalizedQuery || t('systemDefault').toLocaleLowerCase().includes(normalizedQuery))
 
   const selectVoice = async (voiceId: string) => {
+    const recentVoiceIds = canonicalizeVoiceIds(settings.recentVoiceIds, voices)
     await onUpdate({
       voiceId,
       recentVoiceIds: voiceId
-        ? addRecentVoice(settings.recentVoiceIds, voiceId)
+        ? addRecentVoice(recentVoiceIds, voiceId)
         : settings.recentVoiceIds,
     })
   }
 
   const updateLanguageVoice = async (language: SupportedLanguage, voiceId: string) => {
+    const recentVoiceIds = canonicalizeVoiceIds(settings.recentVoiceIds, voices)
     await onUpdate({
       voiceByLanguage: { ...settings.voiceByLanguage, [language]: voiceId },
       recentVoiceIds: voiceId
-        ? addRecentVoice(settings.recentVoiceIds, voiceId)
+        ? addRecentVoice(recentVoiceIds, voiceId)
         : settings.recentVoiceIds,
     })
   }
 
   const savePreset = async () => {
-    const preset = createVoicePreset(settings, presetName)
+    const preset = createVoicePreset(
+      {
+        ...settings,
+        voiceId: selectedVoice ? voiceIdentity(selectedVoice) : settings.voiceId,
+      },
+      presetName,
+    )
     if (!preset) return
     const saved = await onUpdate({
       voicePresets: upsertVoicePreset(settings.voicePresets, preset),
@@ -150,12 +172,29 @@ export function VoiceLibrary({
   }
 
   const applyPreset = async (preset: VoicePreset) => {
+    const presetVoice = voices.find((voice) => voiceMatchesId(voice, preset.voiceId))
+    const voiceId = presetVoice ? voiceIdentity(presetVoice) : preset.voiceId
     await onUpdate({
       ...applyVoicePreset(preset),
-      recentVoiceIds: preset.voiceId
-        ? addRecentVoice(settings.recentVoiceIds, preset.voiceId)
+      voiceId,
+      recentVoiceIds: voiceId
+        ? addRecentVoice(recentIds, voiceId)
         : settings.recentVoiceIds,
     })
+  }
+
+  const mappedVoiceId = (language: SupportedLanguage) => {
+    const voice = voices.find(
+      (candidate) =>
+        normalizeSupportedLanguage(candidate.lang) === language &&
+        voiceMatchesId(candidate, settings.voiceByLanguage[language]),
+    )
+    return voice ? voiceIdentity(voice) : ''
+  }
+
+  const savedVoiceLabel = (voiceId: string) => {
+    const voice = voices.find((candidate) => voiceMatchesId(candidate, voiceId))
+    return voice ? voiceLabel(voice) : t('unavailableSavedVoice')
   }
 
   return (
@@ -217,15 +256,15 @@ export function VoiceLibrary({
                 <span>{t(languageKey(language))}</span>
                 <select
                   className="h-8 min-w-0 rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-2"
-                  value={settings.voiceByLanguage[language]}
+                  value={mappedVoiceId(language)}
                   onChange={(event) =>
                     void updateLanguageVoice(language, event.target.value)
                   }
                 >
                   <option value="">{t('useAutomaticVoice')}</option>
                   {filterVoices(voices, { query: '', language }).map((voice) => (
-                    <option key={idOf(voice)} value={idOf(voice)}>
-                      {voice.name}
+                    <option key={voiceIdentity(voice)} value={voiceIdentity(voice)}>
+                      {voiceLabel(voice)}
                     </option>
                   ))}
                 </select>
@@ -296,13 +335,13 @@ export function VoiceLibrary({
             </div>
           )}
           {filteredVoices.map((voice) => {
-            const id = idOf(voice)
-            const key = voiceIdentity(voice)
-            const selected = id === settings.voiceId || voice.name === settings.voiceId
+            const id = voiceIdentity(voice)
+            const key = id
+            const selected = voice === selectedVoice
             const favorite = favorites.has(id)
-            const voiceLabel = `${voice.name}${voice.lang ? ` (${voice.lang})` : ''}`
-            const previewLabel = `${t(previewPlaying && previewVoiceKey === key ? 'stopPreview' : 'previewVoice')}: ${voiceLabel}`
-            const favoriteLabel = `${t(favorite ? 'unfavoriteVoice' : 'favoriteVoice')}: ${voiceLabel}`
+            const label = voiceLabel(voice)
+            const previewLabel = `${t(previewPlaying && previewVoiceKey === key ? 'stopPreview' : 'previewVoice')}: ${label}`
+            const favoriteLabel = `${t(favorite ? 'unfavoriteVoice' : 'favoriteVoice')}: ${label}`
             return (
               <div
                 key={key}
@@ -352,10 +391,7 @@ export function VoiceLibrary({
                   title={favoriteLabel}
                   onClick={() =>
                     void onUpdate({
-                      favoriteVoiceIds: toggleFavoriteVoice(
-                        settings.favoriteVoiceIds,
-                        id,
-                      ),
+                      favoriteVoiceIds: toggleFavoriteVoice(favoriteIds, id),
                     })
                   }
                 >
@@ -418,11 +454,7 @@ export function VoiceLibrary({
                   </span>
                   <span className="block truncate text-[10px] text-[var(--tr-muted)]">
                     {preset.voiceId
-                      ? (voices.find(
-                          (voice) =>
-                            idOf(voice) === preset.voiceId ||
-                            voice.name === preset.voiceId,
-                        )?.name ?? t('unavailableSavedVoice'))
+                      ? savedVoiceLabel(preset.voiceId)
                       : t('systemDefault')}
                     {` · ${preset.speed.toFixed(2)}×`}
                   </span>

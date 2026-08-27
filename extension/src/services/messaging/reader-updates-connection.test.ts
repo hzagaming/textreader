@@ -60,6 +60,26 @@ describe('reader update connection', () => {
     expect(ports[1]!.disconnect).toHaveBeenCalledOnce()
   })
 
+  it('refreshes after recovering from an initial connection failure', () => {
+    vi.useFakeTimers()
+    const port = createPort()
+    const connect = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new Error('service worker unavailable')
+      })
+      .mockReturnValueOnce(port)
+    vi.stubGlobal('chrome', { runtime: { connect } })
+    const onReconnect = vi.fn()
+    const unsubscribe = subscribeToReaderUpdates(vi.fn(), 100, onReconnect)
+
+    vi.advanceTimersByTime(100)
+
+    expect(connect).toHaveBeenCalledTimes(2)
+    expect(onReconnect).toHaveBeenCalledOnce()
+    unsubscribe()
+  })
+
   it('does not reconnect after unsubscribe', () => {
     vi.useFakeTimers()
     const port = createPort()

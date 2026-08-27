@@ -138,6 +138,24 @@ describe('normalizeSettings', () => {
     ])
   })
 
+  it('normalizes reads without writing stale migrations back from another view', async () => {
+    const set = vi.fn()
+    vi.stubGlobal('chrome', {
+      storage: {
+        local: {
+          get: vi.fn(() => ({ [SETTINGS_STORAGE_KEY]: { schemaVersion: 3 } })),
+          set,
+        },
+      },
+    })
+
+    await expect(new SettingsService().get()).resolves.toMatchObject({
+      schemaVersion: 4,
+      naturalExpression: true,
+    })
+    expect(set).not.toHaveBeenCalled()
+  })
+
   it('serializes rapid updates so a slower write cannot discard a newer field', async () => {
     const stored: Record<string, unknown> = {
       [SETTINGS_STORAGE_KEY]: { ...DEFAULT_SETTINGS },
@@ -164,5 +182,33 @@ describe('normalizeSettings', () => {
 
     expect(overlappingWrites).toBe(false)
     expect(stored[SETTINGS_STORAGE_KEY]).toMatchObject({ speed: 1.4, theme: 'dark' })
+  })
+
+  it('continues serializing updates after a storage failure', async () => {
+    const stored: Record<string, unknown> = {
+      [SETTINGS_STORAGE_KEY]: { ...DEFAULT_SETTINGS },
+    }
+    const set = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('storage failed'))
+      .mockImplementationOnce((changes: Record<string, unknown>) => {
+        Object.assign(stored, changes)
+        return Promise.resolve()
+      })
+    vi.stubGlobal('chrome', {
+      storage: {
+        local: {
+          get: vi.fn(() => ({ ...stored })),
+          set,
+        },
+      },
+    })
+    const service = new SettingsService()
+
+    await expect(service.update({ speed: 1.5 })).rejects.toThrow('storage failed')
+    await expect(service.update({ theme: 'dark' })).resolves.toMatchObject({
+      speed: DEFAULT_SETTINGS.speed,
+      theme: 'dark',
+    })
   })
 })

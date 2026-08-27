@@ -162,13 +162,7 @@ export class SettingsService {
 
   async get(): Promise<ReaderSettings> {
     const stored = await chrome.storage.local.get(SETTINGS_STORAGE_KEY)
-    const settings = normalizeSettings(stored[SETTINGS_STORAGE_KEY])
-
-    if (JSON.stringify(stored[SETTINGS_STORAGE_KEY]) !== JSON.stringify(settings)) {
-      await chrome.storage.local.set({ [SETTINGS_STORAGE_KEY]: settings })
-    }
-
-    return settings
+    return normalizeSettings(stored[SETTINGS_STORAGE_KEY])
   }
 
   async update(

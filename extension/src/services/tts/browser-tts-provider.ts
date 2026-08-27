@@ -6,7 +6,7 @@ import {
 import { TextReaderError } from '@/types/errors'
 import { naturalProsody } from './natural-prosody'
 import { segmentText } from './segment-text'
-import { selectVoiceForLanguage } from './voice-catalog'
+import { selectVoiceForLanguage, voiceMatchesId } from './voice-catalog'
 
 const START_TIMEOUT_MS = 10_000
 const MIN_FINISH_TIMEOUT_MS = 45_000
@@ -150,10 +150,7 @@ export class BrowserTTSProvider implements TTSController {
     const voices = this.synthesis.getVoices()
     const fixedVoice =
       readingLanguage !== 'auto' && request.voiceId
-        ? voices.find(
-            (voice) =>
-              voice.voiceURI === request.voiceId || voice.name === request.voiceId,
-          )
+        ? voices.find((voice) => voiceMatchesId(voice, request.voiceId))
         : undefined
     const voice =
       fixedVoice ??

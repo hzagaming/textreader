@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MessageResponse } from '@/services/messaging/protocol'
 import { DEFAULT_SETTINGS } from '@/services/settings/settings'
+import { voiceIdentity } from '@/services/tts/voice-catalog'
 import { createIdleReaderState, useReaderStore } from '@/stores/reader-store'
 import { SidePanelApp } from './side-panel-app'
 
@@ -321,6 +322,72 @@ describe('SidePanel voice preview', () => {
     expect(
       button('Stop preview: Local English (zh-CN)').getAttribute('aria-pressed'),
     ).toBe('true')
+  })
+
+  it('persists the exact locale when selecting voices with colliding IDs', async () => {
+    const duplicateLocaleVoice = {
+      ...voice,
+      lang: 'zh-CN',
+    } as SpeechSynthesisVoice
+    getVoices.mockReturnValue([voice, duplicateLocaleVoice])
+    await renderApp()
+    const row = button('Preview voice: Local English (zh-CN)').closest(
+      '[role="listitem"]',
+    )
+    const select = row?.querySelector('button')
+    if (!(select instanceof HTMLButtonElement))
+      throw new Error('Missing duplicate locale voice selector')
+
+    await act(async () => {
+      select.click()
+      await Promise.resolve()
+    })
+
+    expect(mocks.updateSettings).toHaveBeenCalledWith({
+      voiceId: voiceIdentity(duplicateLocaleVoice),
+      recentVoiceIds: [voiceIdentity(duplicateLocaleVoice)],
+    })
+  })
+
+  it('distinguishes regional voices in per-language mapping', async () => {
+    const traditional = {
+      ...chineseVoice,
+      name: 'Shared Chinese',
+      lang: 'zh-TW',
+      voiceURI: 'shared',
+    } as SpeechSynthesisVoice
+    const simplified = {
+      ...traditional,
+      lang: 'zh-CN',
+    } as SpeechSynthesisVoice
+    getVoices.mockReturnValue([traditional, simplified])
+    await renderApp()
+    const label = [...document.querySelectorAll('fieldset label')].find(
+      (candidate) => candidate.querySelector('span')?.textContent === 'Chinese',
+    )
+    const select = label?.querySelector('select')
+    if (!(select instanceof HTMLSelectElement))
+      throw new Error('Missing Chinese voice mapping')
+
+    expect([...select.options].map((option) => option.textContent)).toEqual([
+      'Automatic system voice',
+      'Shared Chinese (zh-TW)',
+      'Shared Chinese (zh-CN)',
+    ])
+
+    await act(async () => {
+      select.value = voiceIdentity(simplified)
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    expect(mocks.updateSettings).toHaveBeenCalledWith({
+      voiceByLanguage: {
+        ...DEFAULT_SETTINGS.voiceByLanguage,
+        zh: voiceIdentity(simplified),
+      },
+      recentVoiceIds: [voiceIdentity(simplified)],
+    })
   })
 
   it('previews the interface language when automatic voice selection is used', async () => {

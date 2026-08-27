@@ -8,7 +8,7 @@ export function subscribeToReaderUpdates(
   let port: chrome.runtime.Port | undefined
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined
   let stopped = false
-  let connected = false
+  let connectionAttempted = false
 
   const scheduleReconnect = () => {
     if (stopped || reconnectTimer !== undefined) return
@@ -27,12 +27,13 @@ export function subscribeToReaderUpdates(
 
   const connect = () => {
     if (stopped) return
+    const reconnecting = connectionAttempted
+    connectionAttempted = true
     try {
       port = chrome.runtime.connect({ name: READER_UPDATES_PORT })
       port.onMessage.addListener(onMessage)
       port.onDisconnect.addListener(handleDisconnect)
-      if (connected) onReconnect?.()
-      connected = true
+      if (reconnecting) onReconnect?.()
     } catch {
       port = undefined
       scheduleReconnect()

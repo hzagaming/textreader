@@ -6,8 +6,8 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 
 ## Release announcements
 
-- Current: [TextReader 1.1.2](./ANNOUNCEMENT.md)
-- History: [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
+- Current: [TextReader 1.1.3](./ANNOUNCEMENT.md)
+- History: [TextReader 1.1.2](./docs/announcements/history/1.1.2.md), [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
 
 ## Features
 
@@ -24,7 +24,7 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 - Web Speech API playback with automatic per-language voice switching and voice, speed, pitch, volume, and optional sentence-aware Natural expression controls
 - Responsive voice controls that preview slider values immediately and persist once per completed adjustment
 - Lightweight entrance, expansion, loading, playback, and feedback motion with reduced-motion support
-- Searchable voice library with language filters, favorites, recent voices, availability feedback, exact-locale fallback, and on-device/network-use labels
+- Searchable voice library with language filters, favorites, recent voices, availability feedback, persisted exact-locale identity, and on-device/network-use labels
 - Interface-aware, per-sentence expressive previews for any listed voice without changing the saved selection, plus custom voice-setting presets
 - Side Panel article reader with current-sentence tracking and viewport-aware panel scrolling
 - Non-destructive CSS Custom Highlight API integration with a reversible span fallback
