@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MessageResponse } from '@/services/messaging/protocol'
 import { DEFAULT_SETTINGS } from '@/services/settings/settings'
+import type { SettingsPatch } from '@/services/settings/settings-update-queue'
 import { voiceIdentity } from '@/services/tts/voice-catalog'
 import { createIdleReaderState, useReaderStore } from '@/stores/reader-store'
 import { SidePanelApp } from './side-panel-app'
@@ -228,6 +229,17 @@ describe('SidePanel voice preview', () => {
     expect(settingsButton.nextElementSibling?.className).toContain('tr-panel-reveal')
   })
 
+  it('gives voice library text fields persistent accessible names', async () => {
+    await renderApp()
+
+    expect(
+      document.querySelector('input[type="search"]')?.getAttribute('aria-label'),
+    ).toBe('Search voices…')
+    expect(document.querySelector('input[type="text"]')?.getAttribute('aria-label')).toBe(
+      'Preset name',
+    )
+  })
+
   it('shows dedicated visual feedback while playback is starting', async () => {
     useReaderStore.getState().setReader({
       ...createIdleReaderState(DEFAULT_SETTINGS),
@@ -390,6 +402,43 @@ describe('SidePanel voice preview', () => {
     })
   })
 
+  it('keeps rapid voice mappings for different languages', async () => {
+    getVoices.mockReturnValue([voice, chineseVoice])
+    mocks.updateSettings.mockImplementation((patch: SettingsPatch) =>
+      Promise.resolve({ ...DEFAULT_SETTINGS, ...patch }),
+    )
+    await renderApp()
+    const selects = [...document.querySelectorAll('fieldset label')].map((label) => ({
+      language: label.querySelector('span')?.textContent,
+      select: label.querySelector('select'),
+    }))
+    const english = selects.find(({ language }) => language === 'English')?.select
+    const chinese = selects.find(({ language }) => language === 'Chinese')?.select
+    if (!(english instanceof HTMLSelectElement))
+      throw new Error('Missing English voice mapping')
+    if (!(chinese instanceof HTMLSelectElement))
+      throw new Error('Missing Chinese voice mapping')
+
+    act(() => {
+      english.value = voiceIdentity(voice)
+      english.dispatchEvent(new Event('change', { bubbles: true }))
+      chinese.value = voiceIdentity(chineseVoice)
+      chinese.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    await act(async () => {
+      await vi.waitFor(() => expect(mocks.updateSettings).toHaveBeenCalledTimes(2))
+    })
+    expect(mocks.updateSettings).toHaveBeenNthCalledWith(2, {
+      voiceByLanguage: {
+        ...DEFAULT_SETTINGS.voiceByLanguage,
+        en: voiceIdentity(voice),
+        zh: voiceIdentity(chineseVoice),
+      },
+      recentVoiceIds: [voiceIdentity(chineseVoice), voiceIdentity(voice)],
+    })
+  })
+
   it('previews the interface language when automatic voice selection is used', async () => {
     getVoices.mockReturnValue([voice, chineseVoice])
     useReaderStore
@@ -546,6 +595,26 @@ describe('SidePanel voice preview', () => {
     await renderApp()
 
     expect(button('Favorite voice: Local Chinese (zh-CN)').disabled).toBe(false)
+  })
+
+  it('keeps both voices when favorites are changed rapidly', async () => {
+    getVoices.mockReturnValue([voice, chineseVoice])
+    mocks.updateSettings.mockImplementation((patch: SettingsPatch) =>
+      Promise.resolve({ ...DEFAULT_SETTINGS, ...patch }),
+    )
+    await renderApp()
+
+    act(() => {
+      button('Favorite voice: Local English (en-US)').click()
+      button('Favorite voice: Local Chinese (zh-CN)').click()
+    })
+
+    await act(async () => {
+      await vi.waitFor(() => expect(mocks.updateSettings).toHaveBeenCalledTimes(2))
+    })
+    expect(mocks.updateSettings).toHaveBeenNthCalledWith(2, {
+      favoriteVoiceIds: [voiceIdentity(chineseVoice), voiceIdentity(voice)],
+    })
   })
 
   it('does not cancel the speech engine after a preview finishes naturally', async () => {

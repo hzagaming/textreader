@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ReaderSettings, SupportedLanguage, VoicePreset } from '@textreader/shared'
 import { resolveUiLanguage, type Translator } from '@/services/i18n/i18n'
 import { normalizeSupportedLanguage } from '@/services/language/language'
+import type { SettingsUpdate } from '@/services/settings/settings-update-queue'
 import {
   addRecentVoice,
   canonicalizeVoiceIds,
@@ -21,8 +22,6 @@ import {
 
 const LANGUAGES: readonly SupportedLanguage[] = ['en', 'zh', 'ja', 'ko']
 
-type SettingsPatch = Partial<Omit<ReaderSettings, 'schemaVersion'>>
-
 interface VoiceLibraryProps {
   settings: ReaderSettings
   voices: SpeechSynthesisVoice[]
@@ -30,7 +29,7 @@ interface VoiceLibraryProps {
   previewDisabled: boolean
   previewPlaying: boolean
   previewVoiceKey: string
-  onUpdate: (patch: SettingsPatch) => Promise<boolean>
+  onUpdate: (update: SettingsUpdate) => Promise<boolean>
   onPreview: (voice: SpeechSynthesisVoice, language: SupportedLanguage) => void
   onStopPreview: () => void
 }
@@ -137,36 +136,50 @@ export function VoiceLibrary({
     (!normalizedQuery || t('systemDefault').toLocaleLowerCase().includes(normalizedQuery))
 
   const selectVoice = async (voiceId: string) => {
-    const recentVoiceIds = canonicalizeVoiceIds(settings.recentVoiceIds, voices)
-    await onUpdate({
-      voiceId,
-      recentVoiceIds: voiceId
-        ? addRecentVoice(recentVoiceIds, voiceId)
-        : settings.recentVoiceIds,
+    await onUpdate((current) => {
+      const recentVoiceIds = canonicalizeVoiceIds(current.recentVoiceIds, voices)
+      return {
+        voiceId,
+        recentVoiceIds: voiceId
+          ? addRecentVoice(recentVoiceIds, voiceId)
+          : current.recentVoiceIds,
+      }
     })
   }
 
   const updateLanguageVoice = async (language: SupportedLanguage, voiceId: string) => {
-    const recentVoiceIds = canonicalizeVoiceIds(settings.recentVoiceIds, voices)
-    await onUpdate({
-      voiceByLanguage: { ...settings.voiceByLanguage, [language]: voiceId },
-      recentVoiceIds: voiceId
-        ? addRecentVoice(recentVoiceIds, voiceId)
-        : settings.recentVoiceIds,
+    await onUpdate((current) => {
+      const recentVoiceIds = canonicalizeVoiceIds(current.recentVoiceIds, voices)
+      return {
+        voiceByLanguage: { ...current.voiceByLanguage, [language]: voiceId },
+        recentVoiceIds: voiceId
+          ? addRecentVoice(recentVoiceIds, voiceId)
+          : current.recentVoiceIds,
+      }
     })
   }
 
   const savePreset = async () => {
-    const preset = createVoicePreset(
-      {
-        ...settings,
-        voiceId: selectedVoice ? voiceIdentity(selectedVoice) : settings.voiceId,
-      },
-      presetName,
-    )
-    if (!preset) return
-    const saved = await onUpdate({
-      voicePresets: upsertVoicePreset(settings.voicePresets, preset),
+    const name = presetName.trim()
+    if (!name) return
+    const id = crypto.randomUUID()
+    const createdAt = Date.now()
+    const saved = await onUpdate((current) => {
+      const currentVoice = voices.find((voice) => voiceMatchesId(voice, current.voiceId))
+      const preset = createVoicePreset(
+        {
+          ...current,
+          voiceId: currentVoice ? voiceIdentity(currentVoice) : current.voiceId,
+        },
+        name,
+        id,
+        createdAt,
+      )
+      return {
+        voicePresets: preset
+          ? upsertVoicePreset(current.voicePresets, preset)
+          : current.voicePresets,
+      }
     })
     if (saved) setPresetName('')
   }
@@ -174,12 +187,15 @@ export function VoiceLibrary({
   const applyPreset = async (preset: VoicePreset) => {
     const presetVoice = voices.find((voice) => voiceMatchesId(voice, preset.voiceId))
     const voiceId = presetVoice ? voiceIdentity(presetVoice) : preset.voiceId
-    await onUpdate({
-      ...applyVoicePreset(preset),
-      voiceId,
-      recentVoiceIds: voiceId
-        ? addRecentVoice(recentIds, voiceId)
-        : settings.recentVoiceIds,
+    await onUpdate((current) => {
+      const currentRecentIds = canonicalizeVoiceIds(current.recentVoiceIds, voices)
+      return {
+        ...applyVoicePreset(preset),
+        voiceId,
+        recentVoiceIds: voiceId
+          ? addRecentVoice(currentRecentIds, voiceId)
+          : current.recentVoiceIds,
+      }
     })
   }
 
@@ -233,7 +249,9 @@ export function VoiceLibrary({
           aria-label={t('naturalExpression')}
           className={`relative h-6 w-10 shrink-0 rounded-full transition ${settings.naturalExpression ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-surface-strong)]'}`}
           onClick={() =>
-            void onUpdate({ naturalExpression: !settings.naturalExpression })
+            void onUpdate((current) => ({
+              naturalExpression: !current.naturalExpression,
+            }))
           }
         >
           <span
@@ -295,6 +313,7 @@ export function VoiceLibrary({
           <input
             type="search"
             maxLength={80}
+            aria-label={t('searchVoices')}
             className="h-9 min-w-0 rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-2.5 text-[12px]"
             placeholder={t('searchVoices')}
             value={query}
@@ -390,9 +409,12 @@ export function VoiceLibrary({
                   aria-pressed={favorite}
                   title={favoriteLabel}
                   onClick={() =>
-                    void onUpdate({
-                      favoriteVoiceIds: toggleFavoriteVoice(favoriteIds, id),
-                    })
+                    void onUpdate((current) => ({
+                      favoriteVoiceIds: toggleFavoriteVoice(
+                        canonicalizeVoiceIds(current.favoriteVoiceIds, voices),
+                        id,
+                      ),
+                    }))
                   }
                 >
                   {favorite ? '★' : '☆'}
@@ -427,6 +449,7 @@ export function VoiceLibrary({
           <input
             type="text"
             maxLength={60}
+            aria-label={t('presetName')}
             className="h-9 min-w-0 flex-1 rounded-lg border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-2.5 text-[12px]"
             placeholder={t('presetName')}
             value={presetName}
@@ -471,9 +494,9 @@ export function VoiceLibrary({
                   className="h-8 rounded-md px-2 text-[11px] text-[var(--tr-muted)]"
                   aria-label={`${t('deletePreset')} ${preset.name}`}
                   onClick={() =>
-                    void onUpdate({
-                      voicePresets: removeVoicePreset(settings.voicePresets, preset.id),
-                    })
+                    void onUpdate((current) => ({
+                      voicePresets: removeVoicePreset(current.voicePresets, preset.id),
+                    }))
                   }
                 >
                   {t('deletePreset')}

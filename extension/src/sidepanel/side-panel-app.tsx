@@ -31,6 +31,10 @@ import {
 import { naturalProsody } from '@/services/tts/natural-prosody'
 import { segmentText } from '@/services/tts/segment-text'
 import { voiceIdentity } from '@/services/tts/voice-catalog'
+import {
+  SettingsUpdateQueue,
+  type SettingsUpdate,
+} from '@/services/settings/settings-update-queue'
 import { useReaderStore } from '@/stores/reader-store'
 import { estimateSpeechSeconds, formatDuration } from '@/utils/time'
 import { primaryReaderCommand } from './side-panel-commands'
@@ -160,6 +164,10 @@ export function SidePanelApp() {
   const [previewPlaying, setPreviewPlaying] = useState(false)
   const [previewVoiceKey, setPreviewVoiceKey] = useState('')
   const [voiceSettingsOpen, setVoiceSettingsOpen] = useState(false)
+  const settingsQueue = useRef<SettingsUpdateQueue | undefined>(undefined)
+  settingsQueue.current ??= new SettingsUpdateQueue(reader.settings, persistSettings)
+
+  useEffect(() => settingsQueue.current?.sync(reader.settings), [reader.settings])
 
   const speechText = readerDocument?.plainText ?? reader.text
   const totalSeconds = estimateSpeechSeconds(speechText, reader.settings.speed)
@@ -330,12 +338,11 @@ export function SidePanelApp() {
     }
   }
 
-  const updateSettings = async (
-    patch: Partial<Omit<ReaderSettings, 'schemaVersion'>>,
-  ) => {
+  const updateSettings = async (update: SettingsUpdate) => {
     stopPreview()
     try {
-      await persistSettings(patch)
+      const settings = await settingsQueue.current!.update(update)
+      useReaderStore.getState().patchReader({ settings })
       setToast('')
       return true
     } catch {

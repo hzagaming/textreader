@@ -6,8 +6,8 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 
 ## Release announcements
 
-- Current: [TextReader 1.1.3](./ANNOUNCEMENT.md)
-- History: [TextReader 1.1.2](./docs/announcements/history/1.1.2.md), [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
+- Current: [TextReader 1.1.4](./ANNOUNCEMENT.md)
+- History: [TextReader 1.1.3](./docs/announcements/history/1.1.3.md), [TextReader 1.1.2](./docs/announcements/history/1.1.2.md), [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
 
 ## Features
 

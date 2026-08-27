@@ -4,6 +4,10 @@ import { Logo } from '@/components/logo'
 import { createTranslator, resolveUiLanguage } from '@/services/i18n/i18n'
 import { updateSettings } from '@/services/messaging/transport'
 import { DEFAULT_SETTINGS, settingsService } from '@/services/settings/settings'
+import {
+  SettingsUpdateQueue,
+  type SettingsUpdate,
+} from '@/services/settings/settings-update-queue'
 import { shortcutSettingsUrl } from './shortcut-settings'
 
 export function OptionsApp() {
@@ -11,6 +15,8 @@ export function OptionsApp() {
   const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle')
   const [shortcutError, setShortcutError] = useState(false)
   const statusTimer = useRef<number | undefined>(undefined)
+  const settingsQueue = useRef<SettingsUpdateQueue | undefined>(undefined)
+  settingsQueue.current ??= new SettingsUpdateQueue(settings, updateSettings)
   const version = chrome.runtime.getManifest().version
   const t = useMemo(() => createTranslator(settings.uiLanguage), [settings.uiLanguage])
 
@@ -36,16 +42,19 @@ export function OptionsApp() {
     }
   }, [])
 
+  useEffect(() => settingsQueue.current?.sync(settings), [settings])
+
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme
     document.documentElement.lang = resolveUiLanguage(settings.uiLanguage)
     document.title = `TextReader · ${t('settingsTitle')}`
   }, [settings.theme, settings.uiLanguage, t])
 
-  const update = async (patch: Partial<Omit<ReaderSettings, 'schemaVersion'>>) => {
+  const update = async (settingsUpdate: SettingsUpdate) => {
     if (statusTimer.current !== undefined) window.clearTimeout(statusTimer.current)
     try {
-      const next = await updateSettings(patch)
+      const next = await settingsQueue.current!.update(settingsUpdate)
+      if (statusTimer.current !== undefined) window.clearTimeout(statusTimer.current)
       setSettings(next)
       setSaveState('saved')
       statusTimer.current = window.setTimeout(() => setSaveState('idle'), 1200)
@@ -101,9 +110,9 @@ export function OptionsApp() {
               aria-label={t('floatingReadButton')}
               className={`relative h-7 w-12 rounded-full transition ${settings.autoShowSelectionButton ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}
               onClick={() =>
-                void update({
-                  autoShowSelectionButton: !settings.autoShowSelectionButton,
-                })
+                void update((current) => ({
+                  autoShowSelectionButton: !current.autoShowSelectionButton,
+                }))
               }
             >
               <span
@@ -144,7 +153,9 @@ export function OptionsApp() {
               aria-label={t('naturalExpression')}
               className={`relative h-7 w-12 shrink-0 rounded-full transition ${settings.naturalExpression ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}
               onClick={() =>
-                void update({ naturalExpression: !settings.naturalExpression })
+                void update((current) => ({
+                  naturalExpression: !current.naturalExpression,
+                }))
               }
             >
               <span

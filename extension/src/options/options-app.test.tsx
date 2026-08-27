@@ -5,11 +5,17 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReaderSettings } from '@textreader/shared'
 import { DEFAULT_SETTINGS } from '@/services/settings/settings'
+import type { SettingsPatch } from '@/services/settings/settings-update-queue'
 import { OptionsApp } from './options-app'
 
 const mocks = vi.hoisted(() => ({
   getSettings: vi.fn<() => Promise<ReaderSettings>>(),
   subscribeSettings: vi.fn(),
+  updateSettings: vi.fn(),
+}))
+
+vi.mock('@/services/messaging/transport', () => ({
+  updateSettings: mocks.updateSettings,
 }))
 
 vi.mock('@/services/settings/settings', async (importOriginal) => {
@@ -32,6 +38,11 @@ beforeEach(() => {
     runtime: { getManifest: () => ({ version: '1.1.1' }) },
     tabs: { create: vi.fn() },
   })
+  mocks.getSettings.mockResolvedValue(DEFAULT_SETTINGS)
+  mocks.subscribeSettings.mockReturnValue(vi.fn())
+  mocks.updateSettings.mockImplementation((patch: SettingsPatch) =>
+    Promise.resolve({ ...DEFAULT_SETTINGS, ...patch }),
+  )
 })
 
 afterEach(() => {
@@ -100,5 +111,33 @@ describe('OptionsApp settings initialization', () => {
     })
 
     expect(document.querySelector('header > span')?.textContent).toBe('v1.1.1')
+  })
+
+  it('applies rapid repeated switch clicks to the latest saved settings', async () => {
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+    await act(async () => {
+      root?.render(<OptionsApp />)
+      await Promise.resolve()
+    })
+    const expressionSwitch = document.querySelector(
+      'button[role="switch"][aria-label="Natural expression"]',
+    )
+    if (!(expressionSwitch instanceof HTMLButtonElement))
+      throw new Error('Missing natural expression switch')
+
+    act(() => {
+      expressionSwitch.click()
+      expressionSwitch.click()
+    })
+
+    await act(async () => {
+      await vi.waitFor(() => expect(mocks.updateSettings).toHaveBeenCalledTimes(2))
+    })
+    expect(mocks.updateSettings).toHaveBeenNthCalledWith(1, {
+      naturalExpression: false,
+    })
+    expect(mocks.updateSettings).toHaveBeenNthCalledWith(2, {
+      naturalExpression: true,
+    })
   })
 })
