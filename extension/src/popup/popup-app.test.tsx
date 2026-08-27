@@ -9,7 +9,8 @@ import { PopupApp } from './popup-app'
 const mocks = vi.hoisted(() => ({
   getSettings: vi.fn(),
   updateSettings: vi.fn(),
-  getActiveReaderState: vi.fn(),
+  getReaderState: vi.fn(),
+  sendRuntimeMessage: vi.fn(),
 }))
 
 vi.mock('@/services/settings/settings', async (importOriginal) => {
@@ -24,8 +25,9 @@ vi.mock('@/services/settings/settings', async (importOriginal) => {
 })
 
 vi.mock('@/services/messaging/transport', () => ({
-  getActiveReaderState: mocks.getActiveReaderState,
-  sendRuntimeMessage: vi.fn(),
+  getReaderState: mocks.getReaderState,
+  sendRuntimeMessage: mocks.sendRuntimeMessage,
+  updateSettings: mocks.updateSettings,
 }))
 
 let root: Root | undefined
@@ -38,8 +40,9 @@ beforeEach(() => {
     },
   })
   mocks.getSettings.mockResolvedValue(DEFAULT_SETTINGS)
-  mocks.getActiveReaderState.mockResolvedValue({ ok: true })
+  mocks.getReaderState.mockResolvedValue({ ok: true })
   mocks.updateSettings.mockResolvedValue(DEFAULT_SETTINGS)
+  mocks.sendRuntimeMessage.mockResolvedValue({ ok: true })
 })
 
 afterEach(() => {
@@ -60,6 +63,20 @@ describe('PopupApp', () => {
     })
 
     expect(document.querySelector('main')?.className).toContain('tr-app-enter')
+  })
+
+  it('loads the reader state from the same tab used for the visible title', async () => {
+    const query = chrome.tabs.query as unknown as ReturnType<typeof vi.fn>
+    query.mockResolvedValue([{ id: 42, title: 'Bound page' } as chrome.tabs.Tab])
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+
+    await act(async () => {
+      root?.render(<PopupApp />)
+      await Promise.resolve()
+    })
+
+    await vi.waitFor(() => expect(mocks.getReaderState).toHaveBeenCalledWith(42))
+    expect(document.body.textContent).toContain('Bound page')
   })
 
   it('keeps the selection switch disabled until settings finish loading', async () => {
@@ -126,7 +143,7 @@ describe('PopupApp', () => {
   })
 
   it('shows the page error returned by the content connection', async () => {
-    mocks.getActiveReaderState.mockResolvedValue({
+    mocks.getReaderState.mockResolvedValue({
       ok: false,
       error: {
         code: 'UNSUPPORTED_PAGE',

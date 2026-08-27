@@ -1,4 +1,4 @@
-import type { ReaderDocument, ReaderState } from '@textreader/shared'
+import type { ReaderDocument, ReaderSettings, ReaderState } from '@textreader/shared'
 import type { MessageResponse, TextReaderMessage } from './protocol'
 
 function isMessageResponse<T>(value: unknown): value is MessageResponse<T> {
@@ -82,10 +82,6 @@ export async function sendToTab<T = undefined>(
   }
 }
 
-export async function getActiveReaderState(): Promise<MessageResponse<ReaderState>> {
-  return sendToActiveTab<ReaderState>({ type: 'GET_READER_STATE' })
-}
-
 export async function getReaderState(
   tabId: number,
 ): Promise<MessageResponse<ReaderState>> {
@@ -96,4 +92,16 @@ export async function getReaderDocument(
   tabId: number,
 ): Promise<MessageResponse<ReaderDocument>> {
   return sendToTab<ReaderDocument>(tabId, { type: 'GET_READER_DOCUMENT' })
+}
+
+export async function updateSettings(
+  patch: Partial<Omit<ReaderSettings, 'schemaVersion'>>,
+): Promise<ReaderSettings> {
+  const response = await sendRuntimeMessage<ReaderSettings>({
+    type: 'UPDATE_SETTINGS',
+    payload: { patch },
+  })
+  if (!response.ok) throw new Error(response.error.message)
+  if (!response.data) throw new Error('The extension returned no settings.')
+  return response.data
 }

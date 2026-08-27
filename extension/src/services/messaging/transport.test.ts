@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getActiveTab, getReaderDocument, getReaderState, sendToTab } from './transport'
+import {
+  getActiveTab,
+  getReaderDocument,
+  getReaderState,
+  sendToTab,
+  updateSettings,
+} from './transport'
+import { DEFAULT_SETTINGS } from '@/services/settings/settings'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -41,5 +48,17 @@ describe('reader transport', () => {
     })
 
     await expect(getActiveTab()).resolves.toBeUndefined()
+  })
+
+  it('routes settings writes through the extension runtime', async () => {
+    const settings = { ...DEFAULT_SETTINGS, speed: 1.25 }
+    const sendMessage = vi.fn().mockResolvedValue({ ok: true, data: settings })
+    vi.stubGlobal('chrome', { runtime: { sendMessage } })
+
+    await expect(updateSettings({ speed: 1.25 })).resolves.toEqual(settings)
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: 'UPDATE_SETTINGS',
+      payload: { patch: { speed: 1.25 } },
+    })
   })
 })

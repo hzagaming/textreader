@@ -250,6 +250,40 @@ describe('BrowserTTSProvider', () => {
     })
   })
 
+  it('recovers when a started browser voice never finishes', async () => {
+    vi.useFakeTimers()
+    const snapshots: PlaybackSnapshot[] = []
+    const { synthesis } = createSynthesis()
+    const provider = new BrowserTTSProvider(synthesis, (snapshot) =>
+      snapshots.push(snapshot),
+    )
+
+    await provider.speak({ text: 'Read this.', rate: 1, pitch: 0, volume: 1 })
+    await vi.advanceTimersByTimeAsync(45_000)
+
+    expect(synthesis.speaking).toBe(false)
+    expect(snapshots.at(-1)).toMatchObject({
+      status: 'error',
+      error: { code: 'TTS_ERROR' },
+    })
+  })
+
+  it('does not time out while playback is paused', async () => {
+    vi.useFakeTimers()
+    const snapshots: PlaybackSnapshot[] = []
+    const { synthesis } = createSynthesis()
+    const provider = new BrowserTTSProvider(synthesis, (snapshot) =>
+      snapshots.push(snapshot),
+    )
+
+    await provider.speak({ text: 'Read this.', rate: 1, pitch: 0, volume: 1 })
+    provider.pause()
+    await vi.advanceTimersByTimeAsync(45_000)
+
+    expect(snapshots.at(-1)?.status).toBe('paused')
+    expect(synthesis.speaking).toBe(true)
+  })
+
   it('clears the startup timeout when playback is stopped', async () => {
     vi.useFakeTimers()
     const snapshots: PlaybackSnapshot[] = []

@@ -17,7 +17,10 @@ import {
   isTextReaderMessage,
   type TextReaderMessage,
 } from '@/services/messaging/protocol'
-import { sendToActiveTab } from '@/services/messaging/transport'
+import {
+  sendToActiveTab,
+  updateSettings as persistSettings,
+} from '@/services/messaging/transport'
 import {
   createTranslator,
   resolveUiLanguage,
@@ -25,7 +28,6 @@ import {
   type MessageKey,
   type Translator,
 } from '@/services/i18n/i18n'
-import { settingsService } from '@/services/settings/settings'
 import { naturalProsody } from '@/services/tts/natural-prosody'
 import { segmentText } from '@/services/tts/segment-text'
 import { voiceIdentity } from '@/services/tts/voice-catalog'
@@ -333,7 +335,7 @@ export function SidePanelApp() {
   ) => {
     stopPreview()
     try {
-      await settingsService.update(patch)
+      await persistSettings(patch)
       setToast('')
       return true
     } catch {
@@ -398,7 +400,11 @@ export function SidePanelApp() {
         if (previewUtterance.current !== utterance || previewTimer.current === undefined)
           return
         window.clearTimeout(previewTimer.current)
-        previewTimer.current = undefined
+        previewTimer.current = window.setTimeout(() => {
+          if (previewUtterance.current !== utterance) return
+          stopPreview()
+          setToast(t('ttsError'))
+        }, 45_000)
       }
       previewUtterance.current = utterance
       previewTimer.current = window.setTimeout(() => {

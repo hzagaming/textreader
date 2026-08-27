@@ -9,6 +9,8 @@ import { segmentText } from './segment-text'
 import { selectVoiceForLanguage } from './voice-catalog'
 
 const START_TIMEOUT_MS = 10_000
+const MIN_FINISH_TIMEOUT_MS = 45_000
+const FINISH_TIMEOUT_PER_CHARACTER_MS = 500
 
 export type PlaybackStatus = 'playing' | 'paused' | 'stopped' | 'finished' | 'error'
 
@@ -25,6 +27,8 @@ export class BrowserTTSProvider implements TTSController {
   private request: TTSRequest | null = null
   private generation = 0
   private startTimer: ReturnType<typeof setTimeout> | undefined
+  private finishTimer: ReturnType<typeof setTimeout> | undefined
+  private finishTimeoutMs = MIN_FINISH_TIMEOUT_MS
 
   constructor(
     private readonly synthesis: SpeechSynthesis,
@@ -52,6 +56,7 @@ export class BrowserTTSProvider implements TTSController {
 
   pause(): void {
     if (!this.synthesis.speaking || this.synthesis.paused) return
+    this.clearFinishTimer()
     this.synthesis.pause()
     this.emit('paused')
   }
@@ -59,12 +64,14 @@ export class BrowserTTSProvider implements TTSController {
   resume(): void {
     if (!this.synthesis.paused) return
     this.synthesis.resume()
+    this.scheduleFinishTimer(this.generation)
     this.emit('playing')
   }
 
   stop(emit = true): void {
     this.generation += 1
     this.clearStartTimer()
+    this.clearFinishTimer()
     this.synthesis.cancel()
     if (emit) this.emit('stopped')
   }
@@ -109,6 +116,7 @@ export class BrowserTTSProvider implements TTSController {
   private restartCurrent(): void {
     this.generation += 1
     this.clearStartTimer()
+    this.clearFinishTimer()
     this.synthesis.cancel()
     this.speakCurrent(this.generation)
   }
@@ -131,6 +139,12 @@ export class BrowserTTSProvider implements TTSController {
     utterance.rate = prosody.rate
     utterance.pitch = prosody.pitch
     utterance.volume = prosody.volume
+    this.finishTimeoutMs = Math.max(
+      MIN_FINISH_TIMEOUT_MS,
+      Math.ceil(
+        (text.length * FINISH_TIMEOUT_PER_CHARACTER_MS) / Math.max(0.5, utterance.rate),
+      ),
+    )
     const readingLanguage = request.readingLanguage ?? 'auto'
     const language = resolveReadingLanguage(text, readingLanguage, request.language)
     const voices = this.synthesis.getVoices()
@@ -158,11 +172,13 @@ export class BrowserTTSProvider implements TTSController {
     utterance.onstart = () => {
       if (generation !== this.generation) return
       this.clearStartTimer()
+      this.scheduleFinishTimer(generation)
       this.emit('playing')
     }
     utterance.onend = () => {
       if (generation !== this.generation) return
       this.clearStartTimer()
+      this.clearFinishTimer()
       if (this.sentenceIndex < this.sentences.length - 1) {
         this.sentenceIndex += 1
         this.speakCurrent(generation)
@@ -173,6 +189,7 @@ export class BrowserTTSProvider implements TTSController {
     utterance.onerror = (event) => {
       if (generation !== this.generation) return
       this.clearStartTimer()
+      this.clearFinishTimer()
       this.generation += 1
       this.emit(
         'error',
@@ -184,6 +201,7 @@ export class BrowserTTSProvider implements TTSController {
     this.startTimer = setTimeout(() => {
       if (generation !== this.generation) return
       this.startTimer = undefined
+      this.clearFinishTimer()
       this.generation += 1
       this.synthesis.cancel()
       this.emit(
@@ -195,6 +213,7 @@ export class BrowserTTSProvider implements TTSController {
       this.synthesis.speak(utterance)
     } catch {
       this.clearStartTimer()
+      this.clearFinishTimer()
       this.generation += 1
       this.emit('error', new TextReaderError('TTS_ERROR', 'System voice failed.'))
     }
@@ -204,6 +223,26 @@ export class BrowserTTSProvider implements TTSController {
     if (this.startTimer === undefined) return
     clearTimeout(this.startTimer)
     this.startTimer = undefined
+  }
+
+  private scheduleFinishTimer(generation: number): void {
+    this.clearFinishTimer()
+    this.finishTimer = setTimeout(() => {
+      if (generation !== this.generation) return
+      this.finishTimer = undefined
+      this.generation += 1
+      this.synthesis.cancel()
+      this.emit(
+        'error',
+        new TextReaderError('TTS_ERROR', 'The system voice did not finish.'),
+      )
+    }, this.finishTimeoutMs)
+  }
+
+  private clearFinishTimer(): void {
+    if (this.finishTimer === undefined) return
+    clearTimeout(this.finishTimer)
+    this.finishTimer = undefined
   }
 
   private emit(status: PlaybackStatus, error?: TextReaderError): void {

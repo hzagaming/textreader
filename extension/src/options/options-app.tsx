@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReaderSettings, ThemePreference } from '@textreader/shared'
 import { Logo } from '@/components/logo'
 import { createTranslator, resolveUiLanguage } from '@/services/i18n/i18n'
+import { updateSettings } from '@/services/messaging/transport'
 import { DEFAULT_SETTINGS, settingsService } from '@/services/settings/settings'
 import { shortcutSettingsUrl } from './shortcut-settings'
 
@@ -44,7 +45,7 @@ export function OptionsApp() {
   const update = async (patch: Partial<Omit<ReaderSettings, 'schemaVersion'>>) => {
     if (statusTimer.current !== undefined) window.clearTimeout(statusTimer.current)
     try {
-      const next = await settingsService.update(patch)
+      const next = await updateSettings(patch)
       setSettings(next)
       setSaveState('saved')
       statusTimer.current = window.setTimeout(() => setSaveState('idle'), 1200)

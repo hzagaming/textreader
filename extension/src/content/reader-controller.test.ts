@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   getSettings: vi.fn<() => Promise<ReaderSettings>>(),
   subscribeSettings: vi.fn(),
   getProgress: vi.fn(),
+  runtimeAddListener: vi.fn(),
 }))
 
 vi.mock('./selection-manager', () => ({
@@ -90,7 +91,7 @@ beforeEach(() => {
   })
   vi.stubGlobal('chrome', {
     runtime: {
-      onMessage: { addListener: vi.fn(), removeListener: vi.fn() },
+      onMessage: { addListener: mocks.runtimeAddListener, removeListener: vi.fn() },
     },
   })
 })
@@ -125,6 +126,7 @@ describe('ContentReaderController startup', () => {
     const starting = controller.start()
     const selectionStartedImmediately = mocks.selectionStart.mock.calls.length === 1
     const subscribedImmediately = typeof emitSettings === 'function'
+    const messagesAcceptedImmediately = mocks.runtimeAddListener.mock.calls.length === 1
     emitSettings?.({ ...DEFAULT_SETTINGS, uiLanguage: 'zh' })
     resolveSettings?.({ ...DEFAULT_SETTINGS, uiLanguage: 'en' })
     resolveProgress?.()
@@ -132,6 +134,7 @@ describe('ContentReaderController startup', () => {
 
     expect(selectionStartedImmediately).toBe(true)
     expect(subscribedImmediately).toBe(true)
+    expect(messagesAcceptedImmediately).toBe(true)
     expect(mocks.setLanguage).toHaveBeenLastCalledWith('zh')
     controller.stop()
   })

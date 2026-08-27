@@ -20,15 +20,8 @@ vi.mock('@/hooks/use-reader-connection', () => ({
 
 vi.mock('@/services/messaging/transport', () => ({
   sendToActiveTab: mocks.sendToActiveTab,
+  updateSettings: mocks.updateSettings,
 }))
-
-vi.mock('@/services/settings/settings', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@/services/settings/settings')>()
-  return {
-    ...original,
-    settingsService: { update: mocks.updateSettings },
-  }
-})
 
 class FakeUtterance {
   rate = 1
@@ -147,6 +140,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   if (root) act(() => root?.unmount())
   root = undefined
   document.body.replaceChildren()
@@ -373,6 +367,29 @@ describe('SidePanel voice preview', () => {
 
     expect(cancel).toHaveBeenCalledOnce()
     expect(button('Preview voice').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('recovers when a started voice preview never finishes', async () => {
+    await renderApp()
+    vi.useFakeTimers()
+    await act(async () => {
+      button('Preview voice').click()
+      await Promise.resolve()
+    })
+    const introduction = speak.mock.calls[0]?.[0] as FakeUtterance | undefined
+
+    act(() => {
+      introduction?.onstart?.call(
+        introduction as unknown as SpeechSynthesisUtterance,
+        {} as SpeechSynthesisEvent,
+      )
+    })
+    await act(async () => vi.advanceTimersByTimeAsync(45_000))
+
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+      'could not play',
+    )
   })
 
   it('stops an active preview before handling a keyboard reader command', async () => {

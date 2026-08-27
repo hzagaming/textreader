@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_SETTINGS, SETTINGS_STORAGE_KEY } from '@/services/settings/settings'
 
 type RuntimeMessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0]
 
@@ -7,9 +8,11 @@ let connectListener: Parameters<typeof chrome.runtime.onConnect.addListener>[0]
 let disconnectListener: () => void
 let postMessage: ReturnType<typeof vi.fn>
 let commandListener: Parameters<typeof chrome.commands.onCommand.addListener>[0]
+let storedSettings: Record<string, unknown>
 
 beforeEach(() => {
   vi.resetModules()
+  storedSettings = { ...DEFAULT_SETTINGS }
   postMessage = vi.fn()
   vi.stubGlobal('chrome', {
     commands: {
@@ -41,6 +44,15 @@ beforeEach(() => {
         }),
       },
       sendMessage: vi.fn().mockResolvedValue(undefined),
+    },
+    storage: {
+      local: {
+        get: vi.fn(() => Promise.resolve({ [SETTINGS_STORAGE_KEY]: storedSettings })),
+        set: vi.fn((changes: Record<string, unknown>) => {
+          storedSettings = changes[SETTINGS_STORAGE_KEY] as Record<string, unknown>
+          return Promise.resolve()
+        }),
+      },
     },
     sidePanel: { open: vi.fn().mockResolvedValue(undefined) },
     tabs: {
@@ -103,6 +115,25 @@ describe('background message relay', () => {
     )
 
     expect(postMessage).not.toHaveBeenCalled()
+  })
+
+  it('serializes settings patches from every extension view in the background', async () => {
+    await import('./service-worker')
+    const dispatch = (patch: Record<string, unknown>) =>
+      new Promise((resolve) => {
+        listener({ type: 'UPDATE_SETTINGS', payload: { patch } }, {}, resolve)
+      })
+
+    const responses = await Promise.all([
+      dispatch({ speed: 1.4 }),
+      dispatch({ theme: 'dark' }),
+    ])
+
+    expect(responses).toEqual([
+      expect.objectContaining({ ok: true }),
+      expect.objectContaining({ ok: true }),
+    ])
+    expect(storedSettings).toMatchObject({ speed: 1.4, theme: 'dark' })
   })
 
   it('stops Side Panel voice previews with the global stop command', async () => {

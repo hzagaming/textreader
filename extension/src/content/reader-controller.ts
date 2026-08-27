@@ -66,19 +66,27 @@ export class ContentReaderController {
     this.handlePlaybackChange(snapshot)
   })
   private unsubscribeSettings: (() => void) | undefined
+  private started = false
+  private lifecycle = 0
 
   async start(): Promise<void> {
+    if (this.started) return
+    this.started = true
+    const lifecycle = ++this.lifecycle
     let settingsVersion = 0
     this.selectionManager.start()
     this.unsubscribeSettings = settingsService.subscribe((nextSettings) => {
       settingsVersion += 1
       this.applySettings(nextSettings)
     })
+    chrome.runtime.onMessage.addListener(this.handleMessage)
+    document.addEventListener('keydown', this.handleReaderKeyboard, true)
     const initialSettingsVersion = settingsVersion
     const [settings, progress] = await Promise.all([
       settingsService.get().catch(() => DEFAULT_SETTINGS),
       readingProgressService.get(window.location.href).catch(() => undefined),
     ])
+    if (!this.started || lifecycle !== this.lifecycle) return
     if (settingsVersion === initialSettingsVersion) {
       this.state = { ...this.state, settings }
       this.floatingButton.setLanguage(settings.uiLanguage)
@@ -101,18 +109,20 @@ export class ContentReaderController {
       }
     }
 
-    chrome.runtime.onMessage.addListener(this.handleMessage)
-    document.addEventListener('keydown', this.handleReaderKeyboard, true)
     this.broadcastState()
   }
 
   stop(): void {
+    if (!this.started) return
+    this.started = false
+    this.lifecycle += 1
     this.readOperations.cancel()
     this.selectionManager.stop()
     this.floatingButton.destroy()
     this.highlight.destroy()
     this.tts.stop()
     this.unsubscribeSettings?.()
+    this.unsubscribeSettings = undefined
     chrome.runtime.onMessage.removeListener(this.handleMessage)
     document.removeEventListener('keydown', this.handleReaderKeyboard, true)
   }

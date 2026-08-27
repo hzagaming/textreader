@@ -7,7 +7,11 @@ import {
   translateErrorCode,
   type MessageKey,
 } from '@/services/i18n/i18n'
-import { getActiveReaderState, sendRuntimeMessage } from '@/services/messaging/transport'
+import {
+  getReaderState,
+  sendRuntimeMessage,
+  updateSettings,
+} from '@/services/messaging/transport'
 import { settingsService } from '@/services/settings/settings'
 
 export function PopupApp() {
@@ -24,10 +28,21 @@ export function PopupApp() {
 
   useEffect(() => {
     let active = true
+    const tabsRequest = chrome.tabs.query({ active: true, currentWindow: true })
     void Promise.allSettled([
-      chrome.tabs.query({ active: true, currentWindow: true }),
+      tabsRequest,
       settingsService.get(),
-      getActiveReaderState(),
+      tabsRequest.then(([tab]) =>
+        tab?.id === undefined
+          ? {
+              ok: false as const,
+              error: {
+                code: 'UNSUPPORTED_PAGE' as const,
+                message: 'No active webpage is available.',
+              },
+            }
+          : getReaderState(tab.id),
+      ),
     ]).then(([tabsResult, settingsResult, readerResult]) => {
       if (!active) return
       const settings =
@@ -81,7 +96,7 @@ export function PopupApp() {
     if (!settingsLoaded || selectionSaving) return
     setSelectionSaving(true)
     try {
-      const settings = await settingsService.update({
+      const settings = await updateSettings({
         autoShowSelectionButton: !selectionEnabled,
       })
       setSelectionEnabled(settings.autoShowSelectionButton)

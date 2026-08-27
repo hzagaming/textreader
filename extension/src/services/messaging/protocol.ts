@@ -1,4 +1,4 @@
-import type { ReaderDocument, ReaderState } from '@textreader/shared'
+import type { ReaderDocument, ReaderSettings, ReaderState } from '@textreader/shared'
 import type { TextReaderErrorCode } from '@/types/errors'
 
 export const READER_UPDATES_PORT = 'reader-updates'
@@ -23,6 +23,10 @@ export type TextReaderMessage =
   | { type: 'READER_STATE_CHANGED'; payload: ReaderState }
   | { type: 'READER_DOCUMENT_CHANGED'; payload: ReaderDocument }
   | { type: 'VOICE_PREVIEW_STOP' }
+  | {
+      type: 'UPDATE_SETTINGS'
+      payload: { patch: Partial<Omit<ReaderSettings, 'schemaVersion'>> }
+    }
   | { type: 'OPEN_SIDE_PANEL'; payload: { tabId: number } }
 
 export type ReaderUpdateMessage = Extract<
@@ -103,6 +107,8 @@ export function isTextReaderMessage(value: unknown): value is TextReaderMessage 
       return hasNonNegativeIntegerPayload(value, 'index')
     case 'OPEN_SIDE_PANEL':
       return hasNonNegativeIntegerPayload(value, 'tabId')
+    case 'UPDATE_SETTINGS':
+      return isRecord(value.payload) && isRecord(value.payload.patch)
     default:
       return false
   }

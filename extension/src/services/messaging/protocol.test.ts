@@ -14,6 +14,12 @@ describe('isTextReaderMessage', () => {
     expect(isTextReaderMessage({ type: 'JUMP_TO_SENTENCE', payload: { index: 4 } })).toBe(
       true,
     )
+    expect(
+      isTextReaderMessage({
+        type: 'UPDATE_SETTINGS',
+        payload: { patch: { speed: 1.25, theme: 'dark' } },
+      }),
+    ).toBe(true)
   })
 
   it('rejects unknown and malformed messages', () => {
@@ -34,6 +40,9 @@ describe('isTextReaderMessage', () => {
     expect(
       isTextReaderMessage({ type: 'OPEN_SIDE_PANEL', payload: { tabId: 2.5 } }),
     ).toBe(false)
+    expect(isTextReaderMessage({ type: 'UPDATE_SETTINGS', payload: { patch: [] } })).toBe(
+      false,
+    )
     expect(isTextReaderMessage(null)).toBe(false)
   })
 

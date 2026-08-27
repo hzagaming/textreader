@@ -5,6 +5,7 @@ import {
   ok,
   type ReaderUpdateMessage,
 } from '@/services/messaging/protocol'
+import { settingsService } from '@/services/settings/settings'
 
 const MENU_ROOT = 'textreader-root'
 const MENU_READ_SELECTION = 'textreader-read-selection'
@@ -111,6 +112,21 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
   ) {
     relayReaderUpdate(sender.tab.id, message)
     return false
+  }
+
+  if (message.type === 'UPDATE_SETTINGS') {
+    void settingsService
+      .update(message.payload.patch)
+      .then((settings) => sendResponse(ok(settings)))
+      .catch((error: unknown) => {
+        sendResponse(
+          failure(
+            'UNKNOWN',
+            error instanceof Error ? error.message : 'Unable to save settings.',
+          ),
+        )
+      })
+    return true
   }
 
   if (message.type !== 'OPEN_SIDE_PANEL') return false
