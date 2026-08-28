@@ -199,13 +199,16 @@ export function VoiceLibrary({
     })
   }
 
-  const mappedVoiceId = (language: SupportedLanguage) => {
-    const voice = voices.find(
+  const mappedVoice = (language: SupportedLanguage) =>
+    voices.find(
       (candidate) =>
         normalizeSupportedLanguage(candidate.lang) === language &&
         voiceMatchesId(candidate, settings.voiceByLanguage[language]),
     )
-    return voice ? voiceIdentity(voice) : ''
+
+  const mappedVoiceId = (language: SupportedLanguage) => {
+    const voice = mappedVoice(language)
+    return voice ? voiceIdentity(voice) : settings.voiceByLanguage[language]
   }
 
   const savedVoiceLabel = (voiceId: string) => {
@@ -255,7 +258,7 @@ export function VoiceLibrary({
           }
         >
           <span
-            className={`absolute top-1 size-4 rounded-full bg-white shadow-sm transition ${settings.naturalExpression ? 'left-5' : 'left-1'}`}
+            className={`absolute top-1 size-4 rounded-full shadow-sm transition ${settings.naturalExpression ? 'left-5 bg-[var(--tr-accent-text)]' : 'left-1 bg-white'}`}
           />
         </button>
       </div>
@@ -280,6 +283,11 @@ export function VoiceLibrary({
                   }
                 >
                   <option value="">{t('useAutomaticVoice')}</option>
+                  {settings.voiceByLanguage[language] && !mappedVoice(language) && (
+                    <option value={settings.voiceByLanguage[language]} disabled>
+                      {t('unavailableSavedVoice')}
+                    </option>
+                  )}
                   {filterVoices(voices, { query: '', language }).map((voice) => (
                     <option key={voiceIdentity(voice)} value={voiceIdentity(voice)}>
                       {voiceLabel(voice)}

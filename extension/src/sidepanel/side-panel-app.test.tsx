@@ -60,6 +60,7 @@ let cancel: ReturnType<typeof vi.fn>
 let getVoices: ReturnType<typeof vi.fn>
 let runtimeMessageListener: Parameters<typeof chrome.runtime.onMessage.addListener>[0]
 let tabActivatedListener: Parameters<typeof chrome.tabs.onActivated.addListener>[0]
+let tabUpdatedListener: Parameters<typeof chrome.tabs.onUpdated.addListener>[0]
 
 function button(label: string): HTMLButtonElement {
   const match = [...document.querySelectorAll('button')].find(
@@ -132,7 +133,14 @@ beforeEach(() => {
         ),
         removeListener: vi.fn(),
       },
-      onUpdated: { addListener: vi.fn(), removeListener: vi.fn() },
+      onUpdated: {
+        addListener: vi.fn(
+          (listener: Parameters<typeof chrome.tabs.onUpdated.addListener>[0]) => {
+            tabUpdatedListener = listener
+          },
+        ),
+        removeListener: vi.fn(),
+      },
     },
   })
   mocks.sendToActiveTab.mockResolvedValue({ ok: true })
@@ -184,6 +192,34 @@ describe('SidePanel voice preview', () => {
     })
 
     expect(document.querySelector('header > span')?.textContent).toBe('Newest page')
+  })
+
+  it('does not accept old-tab titles when the new title lookup fails', async () => {
+    await renderApp(false, false)
+    const query = chrome.tabs.query as unknown as ReturnType<typeof vi.fn>
+    query.mockRejectedValueOnce(new Error('query failed'))
+
+    await act(async () => {
+      tabActivatedListener({ tabId: 2, windowId: 1 })
+      await Promise.resolve()
+    })
+    await vi.waitFor(() =>
+      expect(document.querySelector('header > span')?.textContent).toBe('Current page'),
+    )
+
+    act(() => tabUpdatedListener(1, { title: 'Old tab title' }, {} as chrome.tabs.Tab))
+    expect(document.querySelector('header > span')?.textContent).toBe('Current page')
+
+    act(() => tabUpdatedListener(2, { title: 'New tab title' }, {} as chrome.tabs.Tab))
+    expect(document.querySelector('header > span')?.textContent).toBe('New tab title')
+  })
+
+  it('uses the localized fallback when the active tab title becomes empty', async () => {
+    await renderApp(false, false)
+
+    act(() => tabUpdatedListener(1, { title: '' }, {} as chrome.tabs.Tab))
+
+    expect(document.querySelector('header > span')?.textContent).toBe('Current page')
   })
 
   it('shows one primary action set when no document is loaded', async () => {
@@ -450,6 +486,28 @@ describe('SidePanel voice preview', () => {
       },
       recentVoiceIds: [voiceIdentity(simplified)],
     })
+  })
+
+  it('shows when a saved per-language voice is unavailable', async () => {
+    useReaderStore.getState().setReader(
+      createIdleReaderState({
+        ...DEFAULT_SETTINGS,
+        voiceByLanguage: {
+          ...DEFAULT_SETTINGS.voiceByLanguage,
+          zh: 'missing-chinese-voice',
+        },
+      }),
+    )
+    await renderApp()
+    const chineseLabel = [...document.querySelectorAll('fieldset label')].find(
+      (candidate) => candidate.querySelector('span')?.textContent === 'Chinese',
+    )
+    const select = chineseLabel?.querySelector('select')
+    if (!(select instanceof HTMLSelectElement))
+      throw new Error('Missing Chinese voice mapping')
+
+    expect(select.value).toBe('missing-chinese-voice')
+    expect(select.selectedOptions[0]?.textContent).toBe('Unavailable saved voice')
   })
 
   it('keeps rapid voice mappings for different languages', async () => {

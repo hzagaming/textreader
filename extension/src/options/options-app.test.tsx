@@ -55,6 +55,21 @@ afterEach(() => {
 })
 
 describe('OptionsApp settings initialization', () => {
+  it('describes an initial settings read failure as a load error', async () => {
+    mocks.getSettings.mockRejectedValueOnce(new Error('storage failed'))
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+    await act(async () => {
+      root?.render(<OptionsApp />)
+      await Promise.resolve()
+    })
+
+    await vi.waitFor(() =>
+      expect(document.querySelector('header > span')?.textContent).toBe(
+        'Unable to load TextReader settings.',
+      ),
+    )
+  })
+
   it('does not overwrite a subscription update with a stale initial read', async () => {
     let resolveInitial: ((settings: ReaderSettings) => void) | undefined
     let emitSettings: ((settings: ReaderSettings) => void) | undefined
@@ -128,7 +143,9 @@ describe('OptionsApp settings initialization', () => {
       await Promise.resolve()
     })
     await vi.waitFor(() =>
-      expect(document.querySelector('header > span')?.textContent).toBe('Unable to save'),
+      expect(document.querySelector('header > span')?.textContent).toBe(
+        'Unable to load TextReader settings.',
+      ),
     )
 
     act(() => emitSettings?.(DEFAULT_SETTINGS))
@@ -162,5 +179,49 @@ describe('OptionsApp settings initialization', () => {
     expect(mocks.updateSettings).toHaveBeenNthCalledWith(2, {
       naturalExpression: true,
     })
+  })
+
+  it('uses the theme-aware thumb color for an enabled switch', async () => {
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+    await act(async () => {
+      root?.render(<OptionsApp />)
+      await Promise.resolve()
+    })
+    const expressionSwitch = document.querySelector(
+      'button[role="switch"][aria-label="Natural expression"]',
+    )
+
+    expect(expressionSwitch?.firstElementChild?.className).toContain(
+      'bg-[var(--tr-accent-text)]',
+    )
+  })
+
+  it('requires confirmation before clearing personalized settings', async () => {
+    const confirm = vi.fn(() => false)
+    vi.stubGlobal('confirm', confirm)
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+    await act(async () => {
+      root?.render(<OptionsApp />)
+      await Promise.resolve()
+    })
+    const reset = [...document.querySelectorAll('button')].find(
+      (candidate) => candidate.textContent?.trim() === 'Reset settings',
+    )
+    if (!(reset instanceof HTMLButtonElement))
+      throw new Error('Missing reset settings button')
+
+    act(() => reset.click())
+
+    expect(confirm).toHaveBeenCalledWith(
+      'Reset all settings, favorites, and voice presets?',
+    )
+    expect(mocks.updateSettings).not.toHaveBeenCalled()
+
+    confirm.mockReturnValue(true)
+    await act(async () => {
+      reset.click()
+      await Promise.resolve()
+    })
+    expect(mocks.updateSettings).toHaveBeenCalledWith(DEFAULT_SETTINGS)
   })
 })

@@ -12,7 +12,9 @@ import { shortcutSettingsUrl } from './shortcut-settings'
 
 export function OptionsApp() {
   const [settings, setSettings] = useState<ReaderSettings>(DEFAULT_SETTINGS)
-  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'error'>('idle')
+  const [saveState, setSaveState] = useState<
+    'idle' | 'saved' | 'loadError' | 'saveError'
+  >('idle')
   const [shortcutError, setShortcutError] = useState(false)
   const statusTimer = useRef<number | undefined>(undefined)
   const settingsQueue = useRef<SettingsUpdateQueue | undefined>(undefined)
@@ -38,7 +40,7 @@ export function OptionsApp() {
         if (settingsVersion === initialSettingsVersion) setSettings(nextSettings)
       })
       .catch(() => {
-        if (settingsVersion === initialSettingsVersion) setSaveState('error')
+        if (settingsVersion === initialSettingsVersion) setSaveState('loadError')
       })
     return () => {
       settingsVersion += 1
@@ -64,7 +66,7 @@ export function OptionsApp() {
       setSaveState('saved')
       statusTimer.current = window.setTimeout(() => setSaveState('idle'), 1200)
     } catch {
-      setSaveState('error')
+      setSaveState('saveError')
     }
   }
 
@@ -75,6 +77,10 @@ export function OptionsApp() {
     } catch {
       setShortcutError(true)
     }
+  }
+
+  const resetSettings = () => {
+    if (window.confirm(t('confirmResetSettings'))) void update(DEFAULT_SETTINGS)
   }
 
   return (
@@ -88,14 +94,18 @@ export function OptionsApp() {
         </div>
         <span
           className="text-[12px] text-[var(--tr-muted)]"
-          role={saveState === 'error' ? 'alert' : 'status'}
+          role={
+            saveState === 'loadError' || saveState === 'saveError' ? 'alert' : 'status'
+          }
           aria-live="polite"
         >
           {saveState === 'saved'
             ? t('saved')
-            : saveState === 'error'
-              ? t('unableToSave')
-              : `v${version}`}
+            : saveState === 'loadError'
+              ? t('unableToLoadSettings')
+              : saveState === 'saveError'
+                ? t('unableToSave')
+                : `v${version}`}
         </span>
       </header>
       <div className="tr-stagger space-y-4">
@@ -121,7 +131,7 @@ export function OptionsApp() {
               }
             >
               <span
-                className={`absolute top-1 size-5 rounded-full bg-white shadow transition ${settings.autoShowSelectionButton ? 'left-6' : 'left-1'}`}
+                className={`absolute top-1 size-5 rounded-full shadow transition ${settings.autoShowSelectionButton ? 'left-6 bg-[var(--tr-accent-text)]' : 'left-1 bg-white'}`}
               />
             </button>
           </div>
@@ -164,7 +174,7 @@ export function OptionsApp() {
               }
             >
               <span
-                className={`absolute top-1 size-5 rounded-full bg-white shadow transition ${settings.naturalExpression ? 'left-6' : 'left-1'}`}
+                className={`absolute top-1 size-5 rounded-full shadow transition ${settings.naturalExpression ? 'left-6 bg-[var(--tr-accent-text)]' : 'left-1 bg-white'}`}
               />
             </button>
           </div>
@@ -232,7 +242,7 @@ export function OptionsApp() {
         <button
           type="button"
           className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-4 text-[12px] font-medium"
-          onClick={() => void update(DEFAULT_SETTINGS)}
+          onClick={resetSettings}
         >
           {t('resetSettings')}
         </button>

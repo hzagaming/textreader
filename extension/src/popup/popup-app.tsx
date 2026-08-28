@@ -162,7 +162,7 @@ export function PopupApp() {
             onClick={() => void toggleSelection()}
           >
             <span
-              className={`absolute top-1 size-4 rounded-full bg-white shadow-sm transition ${selectionEnabled ? 'left-5' : 'left-1'}`}
+              className={`absolute top-1 size-4 rounded-full shadow-sm transition ${selectionEnabled ? 'left-5 bg-[var(--tr-accent-text)]' : 'left-1 bg-white'}`}
             />
           </button>
         </div>

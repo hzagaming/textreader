@@ -231,6 +231,7 @@ export function SidePanelApp() {
     ) => {
       if (!isReaderWindowActivation(pageWindowId.current, activeInfo.windowId)) return
       pageWindowId.current = activeInfo.windowId
+      pageTabId.current = activeInfo.tabId
       updateTitle()
     }
     chrome.tabs.onActivated.addListener(handleActivated)
@@ -238,7 +239,8 @@ export function SidePanelApp() {
       tabId,
       changeInfo,
     ) => {
-      if (tabId === pageTabId.current && changeInfo.title) setPageTitle(changeInfo.title)
+      if (tabId === pageTabId.current && typeof changeInfo.title === 'string')
+        setPageTitle(changeInfo.title || t('currentPage'))
     }
     chrome.tabs.onUpdated.addListener(handleUpdated)
     return () => {
