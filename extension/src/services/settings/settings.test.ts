@@ -9,6 +9,11 @@ import {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('normalizeSettings', () => {
+  it('defaults new installations to English', () => {
+    expect(DEFAULT_SETTINGS.uiLanguage).toBe('en')
+    expect(normalizeSettings(undefined).uiLanguage).toBe('en')
+  })
+
   it('returns safe defaults for missing storage', () => {
     expect(normalizeSettings(undefined)).toEqual(DEFAULT_SETTINGS)
   })
@@ -58,7 +63,7 @@ describe('normalizeSettings', () => {
       normalizeSettings({ schemaVersion: 2, voiceId: 'Samantha', theme: 'light' }),
     ).toMatchObject({
       schemaVersion: 4,
-      uiLanguage: 'auto',
+      uiLanguage: 'en',
       readingLanguage: 'auto',
       voiceId: 'Samantha',
       voiceByLanguage: { en: '', zh: '', ja: '', ko: '' },

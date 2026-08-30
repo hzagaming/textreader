@@ -1,5 +1,6 @@
 import type { TextSelection, UiLanguage } from '@textreader/shared'
 import { createTranslator, resolveUiLanguage } from '@/services/i18n/i18n'
+import { DEFAULT_SETTINGS } from '@/services/settings/settings'
 
 const BUTTON_SIZE = 38
 const LARGE_HEIGHT = 46
@@ -16,13 +17,14 @@ export class SelectionFloatingButton {
   private readonly singleWrap: HTMLDivElement
   private readonly tip: HTMLSpanElement
   private selection: TextSelection | null = null
-  private t = createTranslator('auto')
+  private t = createTranslator(DEFAULT_SETTINGS.uiLanguage)
 
   constructor(
     private readonly onRead: (selection: TextSelection) => void,
     private readonly onReadArticle: () => void,
   ) {
     this.host.dataset.textreaderRoot = 'selection-button'
+    this.host.lang = resolveUiLanguage(DEFAULT_SETTINGS.uiLanguage)
     this.host.hidden = true
     const shadow = this.host.attachShadow({ mode: 'closed' })
     const style = document.createElement('style')

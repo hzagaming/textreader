@@ -6,8 +6,8 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 
 ## Release announcements
 
-- Current: [TextReader 1.1.6](./ANNOUNCEMENT.md)
-- History: [TextReader 1.1.5](./docs/announcements/history/1.1.5.md), [TextReader 1.1.4](./docs/announcements/history/1.1.4.md), [TextReader 1.1.3](./docs/announcements/history/1.1.3.md), [TextReader 1.1.2](./docs/announcements/history/1.1.2.md), [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
+- Current: [TextReader 1.1.7](./ANNOUNCEMENT.md)
+- History: [TextReader 1.1.6](./docs/announcements/history/1.1.6.md), [TextReader 1.1.5](./docs/announcements/history/1.1.5.md), [TextReader 1.1.4](./docs/announcements/history/1.1.4.md), [TextReader 1.1.3](./docs/announcements/history/1.1.3.md), [TextReader 1.1.2](./docs/announcements/history/1.1.2.md), [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
 
 ## Features
 
@@ -17,7 +17,7 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 - Mozilla Readability article extraction from a cloned document
 - Fallback extraction through `article`, `main`, largest text container, and cleaned body text
 - Selection, Article, and Page reading modes
-- Chinese, English, Japanese, and Korean interfaces and extension metadata
+- English-first interface with explicit English, Chinese, Japanese, Korean, and system-language choices across application controls and extension metadata
 - Resilient multilingual sentence segmentation with protected URLs, email addresses, contextual abbreviations, decimals, paragraph boundaries, quotes, and grapheme-safe long clauses
 - Sentence queue with previous/next, paragraph navigation, restart, and direct jumps
 - 200–500-character, grapheme-safe speech chunk preparation for future remote TTS providers, including unspaced CJK, Hangul, and emoji text
@@ -27,12 +27,12 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 - Overflow-safe compact Side Panel actions with fully named narrow-screen icon controls
 - Searchable voice library with language filters, favorites, recent voices, explicit unavailable-mapping feedback, persisted exact-locale identity, and on-device/network-use labels
 - Interface-aware, per-sentence expressive previews for any listed voice without changing the saved selection, plus custom voice-setting presets
-- Side Panel article reader with current-sentence tracking and viewport-aware panel scrolling
+- Side Panel article reader with readable sentence separation, current-sentence tracking, and viewport-aware panel scrolling
 - Non-destructive CSS Custom Highlight API integration with a reversible span fallback
 - Sentence, paragraph, or disabled webpage highlighting
 - Concurrent-safe per-URL reading progress with **Continue** and **Start over** actions
 - Estimated reading duration based on text and speech speed
-- Popup, options page, context menus, persistent settings, and confirmation before clearing personalization
+- Popup, options page, settings-aware multilingual context menus, persistent settings, and confirmation before clearing personalization
 - Tab activation/reload refresh so the Side Panel does not retain another tab's document
 - Accurate restricted-page feedback and action availability in the Popup, plus stale-safe active-tab titles in the Side Panel
 - Keyboard navigation while TextReader is active:

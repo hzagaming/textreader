@@ -1,24 +1,24 @@
-# TextReader 1.1.6
+# TextReader 1.1.7
 
-Released on August 28, 2026.
+Released on August 30, 2026.
 
-TextReader 1.1.6 improves settings recovery, tab-title accuracy, dark-theme controls, and voice-mapping transparency after a full UI, UX, motion, and audio-lifecycle audit.
+TextReader 1.1.7 makes English the predictable first-run interface, keeps multilingual controls synchronized, and improves reading polish after a full UI, UX, motion, and audio-lifecycle audit.
 
 ## Highlights
 
-- Distinguished initial settings-load failures from save failures and restored the normal Options status when a later valid storage update arrives.
-- Prevented title updates from the previous tab from overwriting the active Side Panel title after activation, and added a localized fallback for empty page titles.
-- Restored clear checked-switch contrast in dark mode across Popup, Options, and Voice Library while preserving the existing light theme.
-- Kept unavailable saved per-language voices visible as disabled mappings so users can deliberately choose automatic mode or a replacement voice.
-- Added a localized confirmation before resetting settings, voice favorites, and presets, preventing accidental loss of personalization.
-- Rechecked compact and wide layouts, four interface languages, themes, reduced motion, voice controls, destructive actions, production resources, and audio ownership.
+- Made English the default interface for new installations and the safe initial UI before stored settings load, preventing a Chinese-browser language flash in Popup, Side Panel, Options, and webpage selection controls.
+- Preserved explicit English, Chinese, Japanese, Korean, and system-language choices, with complete application translations across all four supported languages.
+- Synchronized context-menu language with TextReader settings on installation, browser startup, and language changes, while serializing rapid updates and protecting existing menus when storage is temporarily unavailable.
+- Kept localized Popup status capitalization as authored instead of applying English-style title casing to every language.
+- Restored visible spacing between adjacent sentence controls in the article reader so sentence boundaries remain clear without weakening direct-jump accessibility.
+- Rechecked compact and wide layouts, all interface languages, themes, reduced motion, focus and labels, voice-preview cleanup, production resources, and audio ownership.
 
 TextReader continues to use browser/OS Web Speech only. SFX and BGM remain intentionally absent because notification sounds and background music would compete with spoken content. No remote audio, tracking, client-side credentials, or third-party secrets were added.
 
 ## Verification
 
-- 34 automated test files with 174 passing tests, including settings error recovery, tab-title races, unavailable voice mappings, switch contrast, and reset confirmation
+- 34 automated test files with 183 passing tests, including first-run language fallback, context-menu synchronization and failure recovery, localized status casing, and sentence spacing
 - ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, diff validation, version consistency, extension-resource integrity, and sensitive-data checks
-- Isolated production-bundle UI checks for Popup, Side Panel, and Options across 280 × 400 through 800 × 800 layouts, all four interface languages, both themes, reduced motion, horizontal overflow, unavailable voice feedback, reset confirmation, and product console errors
+- Isolated production-bundle UI checks for Popup, Side Panel, and Options across 280 × 400 through 800 × 800 layouts, all four interface languages, both themes, reduced motion, horizontal overflow, accessible controls, readable sentence separation, and product console errors
 
-Previous announcement: [TextReader 1.1.5](./docs/announcements/history/1.1.5.md).
+Previous announcement: [TextReader 1.1.6](./docs/announcements/history/1.1.6.md).

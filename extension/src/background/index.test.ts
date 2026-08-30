@@ -8,11 +8,17 @@ let connectListener: Parameters<typeof chrome.runtime.onConnect.addListener>[0]
 let disconnectListener: () => void
 let postMessage: ReturnType<typeof vi.fn>
 let commandListener: Parameters<typeof chrome.commands.onCommand.addListener>[0]
+let installedListener: Parameters<typeof chrome.runtime.onInstalled.addListener>[0]
+let startupListener: Parameters<typeof chrome.runtime.onStartup.addListener>[0]
+let getStoredSettings: ReturnType<typeof vi.fn>
 let storedSettings: Record<string, unknown>
 
 beforeEach(() => {
   vi.resetModules()
   storedSettings = { ...DEFAULT_SETTINGS }
+  getStoredSettings = vi.fn(() =>
+    Promise.resolve({ [SETTINGS_STORAGE_KEY]: storedSettings }),
+  )
   postMessage = vi.fn()
   vi.stubGlobal('chrome', {
     commands: {
@@ -29,6 +35,9 @@ beforeEach(() => {
       onClicked: { addListener: vi.fn() },
       removeAll: vi.fn().mockResolvedValue(undefined),
     },
+    i18n: {
+      getUILanguage: vi.fn(() => 'zh-CN'),
+    },
     runtime: {
       onConnect: {
         addListener: vi.fn(
@@ -37,7 +46,22 @@ beforeEach(() => {
           },
         ),
       },
-      onInstalled: { addListener: vi.fn() },
+      onInstalled: {
+        addListener: vi.fn(
+          (
+            nextListener: Parameters<typeof chrome.runtime.onInstalled.addListener>[0],
+          ) => {
+            installedListener = nextListener
+          },
+        ),
+      },
+      onStartup: {
+        addListener: vi.fn(
+          (nextListener: Parameters<typeof chrome.runtime.onStartup.addListener>[0]) => {
+            startupListener = nextListener
+          },
+        ),
+      },
       onMessage: {
         addListener: vi.fn((nextListener: RuntimeMessageListener) => {
           listener = nextListener
@@ -47,7 +71,7 @@ beforeEach(() => {
     },
     storage: {
       local: {
-        get: vi.fn(() => Promise.resolve({ [SETTINGS_STORAGE_KEY]: storedSettings })),
+        get: getStoredSettings,
         set: vi.fn((changes: Record<string, unknown>) => {
           storedSettings = changes[SETTINGS_STORAGE_KEY] as Record<string, unknown>
           return Promise.resolve()
@@ -65,6 +89,82 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('background message relay', () => {
+  it('creates English context menus for a new installation on a Chinese browser', async () => {
+    storedSettings = {}
+    await import('./service-worker')
+
+    installedListener({ reason: 'install' })
+
+    await vi.waitFor(() => expect(chrome.contextMenus.create).toHaveBeenCalledTimes(3))
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'textreader-root', title: 'Read with TextReader' }),
+    )
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'textreader-read-selection',
+        title: 'Read selected text',
+      }),
+    )
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'textreader-open', title: 'Open TextReader' }),
+    )
+  })
+
+  it('falls back to English menus when new-install storage is unavailable', async () => {
+    getStoredSettings.mockRejectedValueOnce(new Error('storage unavailable'))
+    await import('./service-worker')
+
+    installedListener({ reason: 'install' })
+
+    await vi.waitFor(() => expect(chrome.contextMenus.create).toHaveBeenCalledTimes(3))
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'textreader-root', title: 'Read with TextReader' }),
+    )
+  })
+
+  it('rebuilds context menus in the explicitly selected language', async () => {
+    await import('./service-worker')
+    const response = new Promise((resolve) => {
+      listener(
+        { type: 'UPDATE_SETTINGS', payload: { patch: { uiLanguage: 'ja' } } },
+        {},
+        resolve,
+      )
+    })
+
+    await expect(response).resolves.toEqual(expect.objectContaining({ ok: true }))
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'textreader-root',
+        title: 'TextReader で読み上げる',
+      }),
+    )
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'textreader-read-selection',
+        title: '選択したテキストを読む',
+      }),
+    )
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'textreader-open', title: 'TextReader を開く' }),
+    )
+  })
+
+  it('refreshes system-language context menus when the browser starts', async () => {
+    storedSettings = { ...DEFAULT_SETTINGS, uiLanguage: 'auto' }
+    await import('./service-worker')
+
+    startupListener()
+
+    await vi.waitFor(() => expect(chrome.contextMenus.create).toHaveBeenCalledTimes(3))
+    expect(chrome.contextMenus.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'textreader-root',
+        title: '使用 TextReader 朗读',
+      }),
+    )
+  })
+
   it('relays reader updates from content scripts to extension views', async () => {
     await import('./service-worker')
     connectListener({

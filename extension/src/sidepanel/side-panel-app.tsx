@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   ReaderDocument,
   ReaderSettings,
@@ -120,24 +120,25 @@ function DocumentView({
             {paragraph.sentences.map((sentence) => {
               const current = sentence.index === currentSentenceIndex
               return (
-                <button
-                  key={sentence.id}
-                  ref={current ? currentSentenceRef : undefined}
-                  type="button"
-                  disabled={disabled}
-                  className={`inline rounded px-0.5 text-left transition-colors ${
-                    current
-                      ? 'bg-[var(--tr-highlight)] font-medium text-[var(--tr-text)]'
-                      : 'text-[var(--tr-muted)] hover:text-[var(--tr-text)]'
-                  }`}
-                  aria-current={current ? 'true' : undefined}
-                  aria-label={`${sentence.text} · ${t('jumpToSentence', [
-                    String(sentence.index + 1),
-                  ])}`}
-                  onClick={() => onJump(sentence.index)}
-                >
-                  {sentence.text}{' '}
-                </button>
+                <Fragment key={sentence.id}>
+                  <button
+                    ref={current ? currentSentenceRef : undefined}
+                    type="button"
+                    disabled={disabled}
+                    className={`inline rounded px-0.5 text-left transition-colors ${
+                      current
+                        ? 'bg-[var(--tr-highlight)] font-medium text-[var(--tr-text)]'
+                        : 'text-[var(--tr-muted)] hover:text-[var(--tr-text)]'
+                    }`}
+                    aria-current={current ? 'true' : undefined}
+                    aria-label={`${sentence.text} · ${t('jumpToSentence', [
+                      String(sentence.index + 1),
+                    ])}`}
+                    onClick={() => onJump(sentence.index)}
+                  >
+                    {sentence.text}
+                  </button>{' '}
+                </Fragment>
               )
             })}
           </p>

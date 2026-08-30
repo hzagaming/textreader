@@ -1,3 +1,5 @@
+import type { ReaderSettings } from '@textreader/shared'
+import { createTranslator } from '@/services/i18n/i18n'
 import {
   READER_UPDATES_PORT,
   failure,
@@ -5,15 +7,39 @@ import {
   ok,
   type ReaderUpdateMessage,
 } from '@/services/messaging/protocol'
-import { settingsService } from '@/services/settings/settings'
+import { DEFAULT_SETTINGS, settingsService } from '@/services/settings/settings'
 
 const MENU_ROOT = 'textreader-root'
 const MENU_READ_SELECTION = 'textreader-read-selection'
 const MENU_OPEN = 'textreader-open'
 const readerPorts = new Set<chrome.runtime.Port>()
+let contextMenuQueue: Promise<void> = Promise.resolve()
 
-function message(key: string, fallback: string): string {
-  return chrome.i18n.getMessage(key) || fallback
+function updateContextMenus(settings?: ReaderSettings): Promise<void> {
+  const operation = contextMenuQueue.then(async () => {
+    const currentSettings = settings ?? (await settingsService.get())
+    const t = createTranslator(currentSettings.uiLanguage)
+    await chrome.contextMenus.removeAll()
+    chrome.contextMenus.create({
+      id: MENU_ROOT,
+      title: t('contextMenuRoot'),
+      contexts: ['all'],
+    })
+    chrome.contextMenus.create({
+      id: MENU_READ_SELECTION,
+      parentId: MENU_ROOT,
+      title: t('contextMenuSelection'),
+      contexts: ['selection'],
+    })
+    chrome.contextMenus.create({
+      id: MENU_OPEN,
+      parentId: MENU_ROOT,
+      title: t('contextMenuOpen'),
+      contexts: ['all'],
+    })
+  })
+  contextMenuQueue = operation.catch(() => undefined)
+  return operation
 }
 
 function relayReaderUpdate(tabId: number, message: ReaderUpdateMessage): void {
@@ -42,30 +68,17 @@ async function sendToTab(tab: chrome.tabs.Tab, message: unknown): Promise<void> 
   await chrome.tabs.sendMessage(tab.id, message)
 }
 
-chrome.runtime.onInstalled.addListener(() => {
-  void chrome.contextMenus
-    .removeAll()
-    .then(() => {
-      chrome.contextMenus.create({
-        id: MENU_ROOT,
-        title: message('contextMenuRoot', 'Read with TextReader'),
-        contexts: ['all'],
-      })
-      chrome.contextMenus.create({
-        id: MENU_READ_SELECTION,
-        parentId: MENU_ROOT,
-        title: message('contextMenuSelection', 'Read selected text'),
-        contexts: ['selection'],
-      })
-      chrome.contextMenus.create({
-        id: MENU_OPEN,
-        parentId: MENU_ROOT,
-        title: message('contextMenuOpen', 'Open TextReader'),
-        contexts: ['all'],
-      })
-    })
-    .catch(() => undefined)
+const refreshContextMenus = () => {
+  void updateContextMenus().catch(() => undefined)
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
+  void updateContextMenus().catch(() => {
+    if (details.reason === 'install')
+      return updateContextMenus(DEFAULT_SETTINGS).catch(() => undefined)
+  })
 })
+chrome.runtime.onStartup.addListener(refreshContextMenus)
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (!tab) return
@@ -117,7 +130,11 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
   if (message.type === 'UPDATE_SETTINGS') {
     void settingsService
       .update(message.payload.patch)
-      .then((settings) => sendResponse(ok(settings)))
+      .then(async (settings) => {
+        if (message.payload.patch.uiLanguage !== undefined)
+          await updateContextMenus(settings).catch(() => undefined)
+        sendResponse(ok(settings))
+      })
       .catch((error: unknown) => {
         sendResponse(
           failure(

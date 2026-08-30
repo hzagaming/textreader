@@ -5,6 +5,7 @@ import { SelectionFloatingButton } from './floating-button'
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   document.body.replaceChildren()
   document.documentElement
     .querySelectorAll('[data-textreader-root]')
@@ -12,6 +13,19 @@ afterEach(() => {
 })
 
 describe('SelectionFloatingButton', () => {
+  it('starts in English before stored settings load on a Chinese browser', () => {
+    vi.stubGlobal('chrome', {
+      i18n: { getUILanguage: vi.fn(() => 'zh-CN') },
+    })
+    const button = new SelectionFloatingButton(vi.fn(), vi.fn())
+    const host = document.documentElement.querySelector<HTMLElement>(
+      '[data-textreader-root="selection-button"]',
+    )
+
+    expect(host?.lang).toBe('en')
+    button.destroy()
+  })
+
   it('keeps the large-selection menu inside a narrow viewport', () => {
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(200)
     vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(320)

@@ -326,6 +326,49 @@ describe('SidePanel voice preview', () => {
     )
   })
 
+  it('renders sentence spacing outside the inline jump controls', async () => {
+    useReaderStore.getState().setReader({
+      ...createIdleReaderState(DEFAULT_SETTINGS),
+      status: 'stopped',
+      text: 'First sentence.',
+      sentenceCount: 2,
+    })
+    useReaderStore.getState().setDocument({
+      id: 'document-spacing',
+      url: 'https://example.com',
+      title: 'Readable document',
+      paragraphs: [
+        {
+          id: 'paragraph-1',
+          text: 'First sentence. Second sentence.',
+          index: 0,
+          sentences: [
+            {
+              id: 'sentence-1',
+              text: 'First sentence.',
+              index: 0,
+              paragraphId: 'paragraph-1',
+            },
+            {
+              id: 'sentence-2',
+              text: 'Second sentence.',
+              index: 1,
+              paragraphId: 'paragraph-1',
+            },
+          ],
+        },
+      ],
+      plainText: 'First sentence. Second sentence.',
+      createdAt: 1,
+    })
+
+    await renderApp(false, false)
+
+    const firstSentence = document.querySelector('article button')
+    expect(firstSentence?.nextSibling?.nodeType).toBe(Node.TEXT_NODE)
+    expect(firstSentence?.nextSibling?.textContent).toBe(' ')
+  })
+
   it('shows dedicated visual feedback while playback is starting', async () => {
     useReaderStore.getState().setReader({
       ...createIdleReaderState(DEFAULT_SETTINGS),

@@ -35,6 +35,7 @@ let root: Root | undefined
 beforeEach(() => {
   ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
   vi.stubGlobal('chrome', {
+    i18n: { getUILanguage: vi.fn(() => 'en-US') },
     tabs: {
       query: vi.fn().mockResolvedValue([{ id: 1, title: 'Example' }]),
     },
@@ -63,6 +64,21 @@ describe('PopupApp', () => {
     })
 
     expect(document.querySelector('main')?.className).toContain('tr-app-enter')
+  })
+
+  it('preserves the authored capitalization of localized status text', async () => {
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+
+    await act(async () => {
+      root?.render(<PopupApp />)
+      await Promise.resolve()
+    })
+
+    const status = [...document.querySelectorAll('p')].find(
+      (candidate) => candidate.textContent === 'Ready to read',
+    )
+    expect(status).toBeDefined()
+    expect(status?.className).not.toContain('capitalize')
   })
 
   it('loads the reader state from the same tab used for the visible title', async () => {
@@ -140,6 +156,23 @@ describe('PopupApp', () => {
       expect(document.querySelector('[role="alert"]')).not.toBeNull(),
     )
     expect((selectionSwitch as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('keeps the initial interface English when storage fails on a Chinese browser', async () => {
+    vi.mocked(chrome.i18n.getUILanguage).mockReturnValue('zh-CN')
+    mocks.getSettings.mockRejectedValue(new Error('storage failed'))
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+
+    await act(async () => {
+      root?.render(<PopupApp />)
+      await Promise.resolve()
+    })
+
+    await vi.waitFor(() =>
+      expect(document.querySelector('[role="alert"]')).not.toBeNull(),
+    )
+    expect(document.body.textContent).toContain('Open Reader')
+    expect(document.body.textContent).not.toContain('打开阅读器')
   })
 
   it('shows the page error returned by the content connection', async () => {

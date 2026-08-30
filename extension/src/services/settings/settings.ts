@@ -19,7 +19,7 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   favoriteVoiceIds: [],
   recentVoiceIds: [],
   voicePresets: [],
-  uiLanguage: 'auto',
+  uiLanguage: 'en',
   readingLanguage: 'auto',
   speed: 1,
   pitch: 0,

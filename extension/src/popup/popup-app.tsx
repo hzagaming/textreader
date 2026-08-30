@@ -12,10 +12,10 @@ import {
   sendRuntimeMessage,
   updateSettings,
 } from '@/services/messaging/transport'
-import { settingsService } from '@/services/settings/settings'
+import { DEFAULT_SETTINGS, settingsService } from '@/services/settings/settings'
 
 export function PopupApp() {
-  const [uiLanguage, setUiLanguage] = useState<UiLanguage>('auto')
+  const [uiLanguage, setUiLanguage] = useState<UiLanguage>(DEFAULT_SETTINGS.uiLanguage)
   const t = useMemo(() => createTranslator(uiLanguage), [uiLanguage])
   const [pageTitle, setPageTitle] = useState(() => t('currentPage'))
   const [tabId, setTabId] = useState<number | null>(null)
@@ -47,7 +47,9 @@ export function PopupApp() {
       if (!active) return
       const settings =
         settingsResult.status === 'fulfilled' ? settingsResult.value : undefined
-      const nextTranslator = createTranslator(settings?.uiLanguage ?? 'auto')
+      const nextTranslator = createTranslator(
+        settings?.uiLanguage ?? DEFAULT_SETTINGS.uiLanguage,
+      )
 
       if (tabsResult.status === 'fulfilled') {
         setPageTitle(tabsResult.value[0]?.title || nextTranslator('currentPage'))
@@ -138,7 +140,7 @@ export function PopupApp() {
           <p className="m-0 truncate text-[12px] font-medium" title={pageTitle}>
             {pageTitle}
           </p>
-          <p className="mb-0 mt-1 text-[11px] capitalize text-[var(--tr-muted)]">
+          <p className="mb-0 mt-1 text-[11px] text-[var(--tr-muted)]">
             {t(statusKey[status])}
           </p>
         </div>
