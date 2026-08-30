@@ -98,6 +98,7 @@ const en = {
   presets: 'Presets',
   applyPreset: 'Apply',
   deletePreset: 'Delete',
+  confirmDeletePreset: 'Delete the “{0}” voice preset? This cannot be undone.',
   localVoicePrivacy:
     'Favorites and presets stay on this device. Browser or OS speech services process playback, and a voice marked “May use network” may send spoken text through its own service.',
   voiceCloneUnavailable:
@@ -216,6 +217,7 @@ const zh: Record<MessageKey, string> = {
   presets: '自定义预设',
   applyPreset: '应用',
   deletePreset: '删除',
+  confirmDeletePreset: '要删除音色预设“{0}”吗？此操作无法撤销。',
   localVoicePrivacy:
     '收藏与预设只保存在本设备。浏览器或系统负责处理朗读；标为“可能联网”的音色可能会由对应服务处理朗读文本。',
   voiceCloneUnavailable: '音色克隆需要授权的服务器供应商，本地模式不会上传或克隆声音。',
@@ -332,6 +334,7 @@ const ja: Record<MessageKey, string> = {
   presets: 'プリセット',
   applyPreset: '適用',
   deletePreset: '削除',
+  confirmDeletePreset: '音声プリセット「{0}」を削除しますか？この操作は元に戻せません。',
   localVoicePrivacy:
     'お気に入りとプリセットはこの端末にのみ保存されます。読み上げはブラウザーまたは OS が処理し、「ネットワーク使用の可能性あり」の音声では読み上げテキストがそのサービスで処理される場合があります。',
   voiceCloneUnavailable:
@@ -448,6 +451,7 @@ const ko: Record<MessageKey, string> = {
   presets: '프리셋',
   applyPreset: '적용',
   deletePreset: '삭제',
+  confirmDeletePreset: '“{0}” 음성 프리셋을 삭제할까요? 이 작업은 되돌릴 수 없습니다.',
   localVoicePrivacy:
     '즐겨찾기와 프리셋은 이 기기에만 저장됩니다. 읽기는 브라우저 또는 운영체제가 처리하며, “네트워크 사용 가능” 음성은 해당 서비스에서 읽을 텍스트를 처리할 수 있습니다.',
   voiceCloneUnavailable:

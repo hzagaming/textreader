@@ -815,4 +815,43 @@ describe('SidePanel voice preview', () => {
 
     expect(input.value).toBe('Keep this name')
   })
+
+  it('requires confirmation before permanently deleting a voice preset', async () => {
+    const confirm = vi.fn(() => false)
+    vi.stubGlobal('confirm', confirm)
+    useReaderStore.getState().setReader(
+      createIdleReaderState({
+        ...DEFAULT_SETTINGS,
+        voicePresets: [
+          {
+            id: 'calm-preset',
+            name: 'Calm preset',
+            voiceId: '',
+            readingLanguage: 'auto',
+            speed: 1,
+            pitch: 0,
+            volume: 1,
+            naturalExpression: true,
+            createdAt: 1,
+          },
+        ],
+      }),
+    )
+    await renderApp()
+
+    act(() => button('Delete Calm preset').click())
+
+    expect(confirm).toHaveBeenCalledWith(
+      'Delete the “Calm preset” voice preset? This cannot be undone.',
+    )
+    expect(mocks.updateSettings).not.toHaveBeenCalled()
+
+    confirm.mockReturnValue(true)
+    await act(async () => {
+      button('Delete Calm preset').click()
+      await Promise.resolve()
+    })
+
+    expect(mocks.updateSettings).toHaveBeenCalledWith({ voicePresets: [] })
+  })
 })

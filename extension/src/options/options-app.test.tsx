@@ -55,6 +55,39 @@ afterEach(() => {
 })
 
 describe('OptionsApp settings initialization', () => {
+  it('keeps settings controls disabled until the initial read succeeds', async () => {
+    let resolveSettings: ((settings: ReaderSettings) => void) | undefined
+    mocks.getSettings.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSettings = resolve
+      }),
+    )
+    root = createRoot(document.body.appendChild(document.createElement('div')))
+    act(() => root?.render(<OptionsApp />))
+
+    const expressionSwitch = document.querySelector(
+      'button[role="switch"][aria-label="Natural expression"]',
+    )
+    const languageSelect = [...document.querySelectorAll('select')].find(
+      (select) => select.value === 'en',
+    )
+    const reset = [...document.querySelectorAll('button')].find(
+      (candidate) => candidate.textContent?.trim() === 'Reset settings',
+    )
+    expect((expressionSwitch as HTMLButtonElement).disabled).toBe(true)
+    expect(languageSelect?.disabled).toBe(true)
+    expect((reset as HTMLButtonElement).disabled).toBe(true)
+
+    await act(async () => {
+      resolveSettings?.(DEFAULT_SETTINGS)
+      await Promise.resolve()
+    })
+
+    expect((expressionSwitch as HTMLButtonElement).disabled).toBe(false)
+    expect(languageSelect?.disabled).toBe(false)
+    expect((reset as HTMLButtonElement).disabled).toBe(false)
+  })
+
   it('describes an initial settings read failure as a load error', async () => {
     mocks.getSettings.mockRejectedValueOnce(new Error('storage failed'))
     root = createRoot(document.body.appendChild(document.createElement('div')))
@@ -68,6 +101,13 @@ describe('OptionsApp settings initialization', () => {
         'Unable to load TextReader settings.',
       ),
     )
+    expect(
+      (
+        document.querySelector(
+          'button[role="switch"][aria-label="Natural expression"]',
+        ) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true)
   })
 
   it('does not overwrite a subscription update with a stale initial read', async () => {

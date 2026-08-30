@@ -199,6 +199,13 @@ export function VoiceLibrary({
     })
   }
 
+  const deletePreset = async (preset: VoicePreset) => {
+    if (!window.confirm(t('confirmDeletePreset', [preset.name]))) return
+    await onUpdate((current) => ({
+      voicePresets: removeVoicePreset(current.voicePresets, preset.id),
+    }))
+  }
+
   const mappedVoice = (language: SupportedLanguage) =>
     voices.find(
       (candidate) =>
@@ -501,11 +508,7 @@ export function VoiceLibrary({
                   type="button"
                   className="h-8 rounded-md px-2 text-[11px] text-[var(--tr-muted)]"
                   aria-label={`${t('deletePreset')} ${preset.name}`}
-                  onClick={() =>
-                    void onUpdate((current) => ({
-                      voicePresets: removeVoicePreset(current.voicePresets, preset.id),
-                    }))
-                  }
+                  onClick={() => void deletePreset(preset)}
                 >
                   {t('deletePreset')}
                 </button>

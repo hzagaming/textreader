@@ -13,8 +13,9 @@ import { shortcutSettingsUrl } from './shortcut-settings'
 export function OptionsApp() {
   const [settings, setSettings] = useState<ReaderSettings>(DEFAULT_SETTINGS)
   const [saveState, setSaveState] = useState<
-    'idle' | 'saved' | 'loadError' | 'saveError'
-  >('idle')
+    'loading' | 'idle' | 'saved' | 'loadError' | 'saveError'
+  >('loading')
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
   const [shortcutError, setShortcutError] = useState(false)
   const statusTimer = useRef<number | undefined>(undefined)
   const settingsQueue = useRef<SettingsUpdateQueue | undefined>(undefined)
@@ -31,13 +32,17 @@ export function OptionsApp() {
         statusTimer.current = undefined
       }
       setSettings(nextSettings)
+      setSettingsLoaded(true)
       setSaveState('idle')
     })
     const initialSettingsVersion = settingsVersion
     void settingsService
       .get()
       .then((nextSettings) => {
-        if (settingsVersion === initialSettingsVersion) setSettings(nextSettings)
+        if (settingsVersion !== initialSettingsVersion) return
+        setSettings(nextSettings)
+        setSettingsLoaded(true)
+        setSaveState('idle')
       })
       .catch(() => {
         if (settingsVersion === initialSettingsVersion) setSaveState('loadError')
@@ -58,6 +63,7 @@ export function OptionsApp() {
   }, [settings.theme, settings.uiLanguage, t])
 
   const update = async (settingsUpdate: SettingsUpdate) => {
+    if (!settingsLoaded) return
     if (statusTimer.current !== undefined) window.clearTimeout(statusTimer.current)
     try {
       const next = await settingsQueue.current!.update(settingsUpdate)
@@ -84,7 +90,10 @@ export function OptionsApp() {
   }
 
   return (
-    <main className="tr-app-enter mx-auto min-h-screen max-w-2xl px-5 py-10">
+    <main
+      className="tr-app-enter mx-auto min-h-screen max-w-2xl px-5 py-10"
+      aria-busy={saveState === 'loading'}
+    >
       <header className="mb-7 flex items-end justify-between">
         <div>
           <Logo />
@@ -99,13 +108,15 @@ export function OptionsApp() {
           }
           aria-live="polite"
         >
-          {saveState === 'saved'
-            ? t('saved')
-            : saveState === 'loadError'
-              ? t('unableToLoadSettings')
-              : saveState === 'saveError'
-                ? t('unableToSave')
-                : `v${version}`}
+          {saveState === 'loading'
+            ? t('statusLoading')
+            : saveState === 'saved'
+              ? t('saved')
+              : saveState === 'loadError'
+                ? t('unableToLoadSettings')
+                : saveState === 'saveError'
+                  ? t('unableToSave')
+                  : `v${version}`}
         </span>
       </header>
       <div className="tr-stagger space-y-4">
@@ -121,9 +132,10 @@ export function OptionsApp() {
             <button
               type="button"
               role="switch"
+              disabled={!settingsLoaded}
               aria-checked={settings.autoShowSelectionButton}
               aria-label={t('floatingReadButton')}
-              className={`relative h-7 w-12 rounded-full transition ${settings.autoShowSelectionButton ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}
+              className={`relative h-7 w-12 rounded-full transition disabled:opacity-50 ${settings.autoShowSelectionButton ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}
               onClick={() =>
                 void update((current) => ({
                   autoShowSelectionButton: !current.autoShowSelectionButton,
@@ -141,7 +153,8 @@ export function OptionsApp() {
           <label className="mt-4 block text-[12px] font-medium">
             {t('webpageHighlight')}
             <select
-              className="mt-2 h-10 w-full rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-3 text-[13px]"
+              disabled={!settingsLoaded}
+              className="mt-2 h-10 w-full rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-3 text-[13px] disabled:opacity-50"
               value={settings.highlightMode}
               onChange={(event) =>
                 void update({
@@ -164,9 +177,10 @@ export function OptionsApp() {
             <button
               type="button"
               role="switch"
+              disabled={!settingsLoaded}
               aria-checked={settings.naturalExpression}
               aria-label={t('naturalExpression')}
-              className={`relative h-7 w-12 shrink-0 rounded-full transition ${settings.naturalExpression ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${settings.naturalExpression ? 'bg-[var(--tr-accent)]' : 'bg-[var(--tr-soft)]'}`}
               onClick={() =>
                 void update((current) => ({
                   naturalExpression: !current.naturalExpression,
@@ -184,7 +198,8 @@ export function OptionsApp() {
           <label className="mt-4 block text-[12px] font-medium">
             {t('interfaceLanguage')}
             <select
-              className="mt-2 h-10 w-full rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-3 text-[13px]"
+              disabled={!settingsLoaded}
+              className="mt-2 h-10 w-full rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-3 text-[13px] disabled:opacity-50"
               value={settings.uiLanguage}
               onChange={(event) =>
                 void update({
@@ -202,7 +217,8 @@ export function OptionsApp() {
           <label className="mt-4 block text-[12px] font-medium">
             {t('theme')}
             <select
-              className="mt-2 h-10 w-full rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-3 text-[13px]"
+              disabled={!settingsLoaded}
+              className="mt-2 h-10 w-full rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface-strong)] px-3 text-[13px] disabled:opacity-50"
               value={settings.theme}
               onChange={(event) =>
                 void update({ theme: event.target.value as ThemePreference })
@@ -241,7 +257,8 @@ export function OptionsApp() {
         </section>
         <button
           type="button"
-          className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-4 text-[12px] font-medium"
+          disabled={!settingsLoaded}
+          className="h-10 rounded-xl border border-[var(--tr-border)] bg-[var(--tr-surface)] px-4 text-[12px] font-medium disabled:opacity-50"
           onClick={resetSettings}
         >
           {t('resetSettings')}

@@ -6,8 +6,8 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 
 ## Release announcements
 
-- Current: [TextReader 1.1.7](./ANNOUNCEMENT.md)
-- History: [TextReader 1.1.6](./docs/announcements/history/1.1.6.md), [TextReader 1.1.5](./docs/announcements/history/1.1.5.md), [TextReader 1.1.4](./docs/announcements/history/1.1.4.md), [TextReader 1.1.3](./docs/announcements/history/1.1.3.md), [TextReader 1.1.2](./docs/announcements/history/1.1.2.md), [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
+- Current: [TextReader 1.1.8](./ANNOUNCEMENT.md)
+- History: [TextReader 1.1.7](./docs/announcements/history/1.1.7.md), [TextReader 1.1.6](./docs/announcements/history/1.1.6.md), [TextReader 1.1.5](./docs/announcements/history/1.1.5.md), [TextReader 1.1.4](./docs/announcements/history/1.1.4.md), [TextReader 1.1.3](./docs/announcements/history/1.1.3.md), [TextReader 1.1.2](./docs/announcements/history/1.1.2.md), [TextReader 1.1.1](./docs/announcements/history/1.1.1.md), [TextReader 1.1.0](./docs/announcements/history/1.1.0.md), [TextReader 0.3.5](./docs/announcements/history/0.3.5.md), [TextReader 0.3.4](./docs/announcements/history/0.3.4.md), [TextReader 0.3.3](./docs/announcements/history/0.3.3.md), [TextReader 0.3.2](./docs/announcements/history/0.3.2.md), [TextReader 0.3.1](./docs/announcements/history/0.3.1.md), [TextReader 0.3.0](./docs/announcements/history/0.3.0.md), [TextReader 0.2.2](./docs/announcements/history/0.2.2.md), [TextReader 0.2.1](./docs/announcements/history/0.2.1.md), [TextReader 0.2.0](./docs/announcements/history/0.2.0.md)
 
 ## Features
 
@@ -32,7 +32,7 @@ This repository contains **Phase 1 and Phase 2**, plus the v1.1 multilingual sys
 - Sentence, paragraph, or disabled webpage highlighting
 - Concurrent-safe per-URL reading progress with **Continue** and **Start over** actions
 - Estimated reading duration based on text and speech speed
-- Popup, options page, settings-aware multilingual context menus, persistent settings, and confirmation before clearing personalization
+- Popup, options page, settings-aware multilingual context menus, guarded settings initialization, and confirmation before clearing personalization or deleting a voice preset
 - Tab activation/reload refresh so the Side Panel does not retain another tab's document
 - Accurate restricted-page feedback and action availability in the Popup, plus stale-safe active-tab titles in the Side Panel
 - Keyboard navigation while TextReader is active:

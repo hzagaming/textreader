@@ -1,24 +1,23 @@
-# TextReader 1.1.7
+# TextReader 1.1.8
 
 Released on August 30, 2026.
 
-TextReader 1.1.7 makes English the predictable first-run interface, keeps multilingual controls synchronized, and improves reading polish after a full UI, UX, motion, and audio-lifecycle audit.
+TextReader 1.1.8 protects settings initialization and destructive voice-preset actions after a full UI, UX, motion, and audio-lifecycle audit.
 
 ## Highlights
 
-- Made English the default interface for new installations and the safe initial UI before stored settings load, preventing a Chinese-browser language flash in Popup, Side Panel, Options, and webpage selection controls.
-- Preserved explicit English, Chinese, Japanese, Korean, and system-language choices, with complete application translations across all four supported languages.
-- Synchronized context-menu language with TextReader settings on installation, browser startup, and language changes, while serializing rapid updates and protecting existing menus when storage is temporarily unavailable.
-- Kept localized Popup status capitalization as authored instead of applying English-style title casing to every language.
-- Restored visible spacing between adjacent sentence controls in the article reader so sentence boundaries remain clear without weakening direct-jump accessibility.
-- Rechecked compact and wide layouts, all interface languages, themes, reduced motion, focus and labels, voice-preview cleanup, production resources, and audio ownership.
+- Kept every Options setting control disabled until the initial local-settings read succeeds, preventing changes based on placeholder defaults.
+- Kept Options controls safely disabled after a storage read failure while preserving the existing localized recovery status.
+- Added localized confirmation in English, Chinese, Japanese, and Korean before permanently deleting a custom voice preset.
+- Preserved a preset when deletion is canceled and removed only the confirmed preset when deletion proceeds.
+- Rechecked compact and wide layouts, all interface languages, themes, reduced motion, voice controls, production resources, and audio ownership.
 
 TextReader continues to use browser/OS Web Speech only. SFX and BGM remain intentionally absent because notification sounds and background music would compete with spoken content. No remote audio, tracking, client-side credentials, or third-party secrets were added.
 
 ## Verification
 
-- 34 automated test files with 183 passing tests, including first-run language fallback, context-menu synchronization and failure recovery, localized status casing, and sentence spacing
+- 34 automated test files with 185 passing tests, including Options initialization guards, load-failure protection, and cancel/confirm voice-preset deletion
 - ESLint, full-workspace TypeScript, production build, formatting, production dependency audit, diff validation, version consistency, extension-resource integrity, and sensitive-data checks
-- Isolated production-bundle UI checks for Popup, Side Panel, and Options across 280 × 400 through 800 × 800 layouts, all four interface languages, both themes, reduced motion, horizontal overflow, accessible controls, readable sentence separation, and product console errors
+- Isolated production-bundle UI checks for Options and Side Panel across 280–800 px widths, all four interface languages, themes, reduced motion, horizontal overflow, settings loading, preset deletion confirmation, and product console errors
 
-Previous announcement: [TextReader 1.1.6](./docs/announcements/history/1.1.6.md).
+Previous announcement: [TextReader 1.1.7](./docs/announcements/history/1.1.7.md).
